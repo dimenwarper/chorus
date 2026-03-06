@@ -23,6 +23,14 @@ end
 config :chorus, ChorusWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
+# GitHub OAuth
+config :ueberauth, Ueberauth.Strategy.Github.OAuth,
+  client_id: System.get_env("GITHUB_CLIENT_ID"),
+  client_secret: System.get_env("GITHUB_CLIENT_SECRET")
+
+# Admin user ID — GitHub user ID of the board owner
+config :chorus, :admin_github_id, System.get_env("ADMIN_GITHUB_ID")
+
 if config_env() == :prod do
   database_path =
     System.get_env("DATABASE_PATH") ||

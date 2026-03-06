@@ -23,6 +23,11 @@ config :chorus, Chorus.Mailer, adapter: Swoosh.Adapters.Test
 # Disable swoosh api client as it is only required for production adapters
 config :swoosh, :api_client, false
 
+# GitHub OAuth — not needed in test
+config :ueberauth, Ueberauth.Strategy.Github.OAuth,
+  client_id: "test-client-id",
+  client_secret: "test-client-secret"
+
 # Print only warnings and errors during test
 config :logger, level: :warning
 

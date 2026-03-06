@@ -1,6 +1,8 @@
 defmodule ChorusWeb.AdminLive do
   use ChorusWeb, :live_view
 
+  on_mount {ChorusWeb.Plugs.AssignUser, :require_auth}
+
   alias Chorus.{Boards, Ideas, Tasks}
 
   @columns [

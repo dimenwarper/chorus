@@ -1,6 +1,8 @@
 defmodule ChorusWeb.IdeaLive do
   use ChorusWeb, :live_view
 
+  on_mount {ChorusWeb.Plugs.AssignUser, :default}
+
   alias Chorus.Ideas
 
   @impl true
@@ -12,7 +14,7 @@ defmodule ChorusWeb.IdeaLive do
     end
 
     voter_id = session["voter_identity"] || "anon:session:anonymous"
-    current_user = session["current_user"]
+    current_user = socket.assigns.current_user
 
     voter =
       case current_user do
@@ -24,7 +26,6 @@ defmodule ChorusWeb.IdeaLive do
      socket
      |> assign(
        idea: idea,
-       current_user: current_user,
        voter_identity: voter,
        upvoted: Ideas.has_upvoted?(idea.id, voter)
      )}

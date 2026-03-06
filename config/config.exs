@@ -57,6 +57,15 @@ config :logger, :default_formatter,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]
 
+# Ueberauth
+config :ueberauth, Ueberauth,
+  providers: [
+    github: {Ueberauth.Strategy.Github, [default_scope: "user:email"]}
+  ]
+
+# Suppress Tesla deprecation warning (used by ueberauth_github)
+config :tesla, disable_deprecated_builder_warning: true
+
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
