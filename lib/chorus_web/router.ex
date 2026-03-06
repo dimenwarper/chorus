@@ -10,28 +10,54 @@ defmodule ChorusWeb.Router do
     plug :put_secure_browser_headers
   end
 
+  pipeline :dev_auth do
+    plug ChorusWeb.Plugs.DevAuth
+  end
+
   pipeline :api do
     plug :accepts, ["json"]
+    plug :fetch_session
   end
 
+  # Public board
   scope "/", ChorusWeb do
-    pipe_through :browser
+    pipe_through [:browser, :dev_auth]
 
-    get "/", PageController, :home
+    live "/", BoardLive
+    live "/ideas/:identifier", IdeaLive
   end
 
-  # Other scopes may use custom stacks.
-  # scope "/api", ChorusWeb do
-  #   pipe_through :api
-  # end
+  # Admin UI
+  scope "/admin", ChorusWeb do
+    pipe_through [:browser, :dev_auth]
+
+    live "/", AdminLive
+  end
+
+  # Public JSON API
+  scope "/api", ChorusWeb.Api do
+    pipe_through [:api, :dev_auth]
+
+    get "/ideas", IdeaController, :index
+    get "/ideas/:identifier", IdeaController, :show
+    post "/ideas", IdeaController, :create
+    post "/ideas/:id/upvote", IdeaController, :upvote
+    delete "/ideas/:id/upvote", IdeaController, :remove_upvote
+  end
+
+  # Admin JSON API
+  scope "/api/admin", ChorusWeb.Api do
+    pipe_through [:api, :dev_auth]
+
+    get "/review", AdminController, :review_queue
+    post "/review/batch", AdminController, :batch_review
+    patch "/ideas/:id", AdminController, :update_idea
+    get "/settings", AdminController, :board_settings
+    patch "/settings", AdminController, :update_board_settings
+  end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:chorus, :dev_routes) do
-    # If you want to use the LiveDashboard in production, you should put
-    # it behind authentication and allow only admins to access it.
-    # If your application does not have an admins-only section yet,
-    # you can use Plug.BasicAuth to set up some basic authentication
-    # as long as you are also using SSL (which you should anyway).
     import Phoenix.LiveDashboard.Router
 
     scope "/dev" do

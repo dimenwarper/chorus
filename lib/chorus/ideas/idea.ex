@@ -35,8 +35,11 @@ defmodule Chorus.Ideas.Idea do
     field :submitted_by_display_name, :string
     field :submitted_by_avatar_url, :string
 
+    field :repo_path, :string
+
     belongs_to :board, Chorus.Boards.Board
     has_many :upvotes, Chorus.Ideas.Upvote
+    has_many :tasks, Chorus.Tasks.Task
 
     timestamps(type: :utc_datetime)
   end

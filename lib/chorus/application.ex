@@ -14,8 +14,8 @@ defmodule Chorus.Application do
        repos: Application.fetch_env!(:chorus, :ecto_repos), skip: skip_migrations?()},
       {DNSCluster, query: Application.get_env(:chorus, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Chorus.PubSub},
-      # Start a worker by calling: Chorus.Worker.start_link(arg)
-      # {Chorus.Worker, arg},
+      # Orchestrator — polls for approved ideas and dispatches agents
+      Chorus.Orchestrator.Server,
       # Start to serve requests, typically the last entry
       ChorusWeb.Endpoint
     ]
