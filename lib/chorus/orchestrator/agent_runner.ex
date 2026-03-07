@@ -148,11 +148,12 @@ defmodule Chorus.Orchestrator.AgentRunner do
 
     try do
       port =
-        Port.open({:spawn, full_command}, [
+        Port.open({:spawn_executable, "/bin/sh"}, [
           :binary,
           :exit_status,
           :stderr_to_stdout,
-          {:line, 8192}
+          {:line, 8192},
+          {:args, ["-c", full_command]}
         ])
 
       {:ok, %{entry | port: port, status: :running}}
