@@ -24,45 +24,52 @@ defmodule ChorusWeb.WebhookController do
   end
 
   defp handle_event("pull_request", %{"action" => action, "pull_request" => pr, "repository" => repo}) do
+    summary = (pr["body"] || "") |> String.slice(0, 200) |> String.split("\n") |> List.first("")
     broadcast_github_activity(repo, %{
       type: "pull_request",
       action: action,
       title: pr["title"],
       number: pr["number"],
       user: pr["user"]["login"],
-      url: pr["html_url"]
+      url: pr["html_url"],
+      summary: summary
     })
   end
 
   defp handle_event("push", %{"commits" => commits, "pusher" => pusher, "repository" => repo, "ref" => ref}) do
     branch = ref |> String.replace("refs/heads/", "")
+    summary = commits |> Enum.take(3) |> Enum.map_join("\n", fn c -> "#{String.slice(c["id"], 0, 7)} #{c["message"] |> String.split("\n") |> List.first()}" end)
     broadcast_github_activity(repo, %{
       type: "push",
       action: "pushed",
       title: "#{length(commits)} commit(s) to #{branch}",
       user: pusher["name"],
-      commits: Enum.map(Enum.take(commits, 3), &%{message: &1["message"], sha: String.slice(&1["id"], 0, 7)})
+      summary: summary
     })
   end
 
   defp handle_event("issues", %{"action" => action, "issue" => issue, "repository" => repo}) do
+    summary = (issue["body"] || "") |> String.slice(0, 200) |> String.split("\n") |> List.first("")
     broadcast_github_activity(repo, %{
       type: "issue",
       action: action,
       title: issue["title"],
       number: issue["number"],
       user: issue["user"]["login"],
-      url: issue["html_url"]
+      url: issue["html_url"],
+      summary: summary
     })
   end
 
   defp handle_event("issue_comment", %{"action" => "created", "comment" => comment, "issue" => issue, "repository" => repo}) do
+    summary = (comment["body"] || "") |> String.slice(0, 200) |> String.split("\n") |> List.first("")
     broadcast_github_activity(repo, %{
       type: "comment",
       action: "commented",
       title: "Comment on ##{issue["number"]}: #{issue["title"]}",
       user: comment["user"]["login"],
-      url: comment["html_url"]
+      url: comment["html_url"],
+      summary: summary
     })
   end
 
@@ -78,13 +85,17 @@ defmodule ChorusWeb.WebhookController do
     event_name = "github_#{details.type}"
     title = format_github_title(details)
 
+    summary = details[:summary] || ""
+    summary = if summary != "", do: String.slice(summary, 0, 200), else: nil
+
     # Persist to DB
     Chorus.Repo.insert!(%Chorus.ActivityEvent{
       event: event_name,
       title: title,
       detail: details[:user],
       url: details[:url],
-      idea_id: if(idea, do: idea.id)
+      idea_id: if(idea, do: idea.id),
+      summary: summary
     })
 
     # Broadcast for live updates
@@ -95,6 +106,7 @@ defmodule ChorusWeb.WebhookController do
       idea_title: idea_title,
       branch: nil,
       last_output: details[:user],
+      summary: summary,
       timestamp: DateTime.utc_now()
     }
 

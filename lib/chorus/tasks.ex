@@ -118,6 +118,7 @@ defmodule Chorus.Tasks do
           idea_title: e.idea && e.idea.title,
           branch: nil,
           last_output: e.detail,
+          summary: e.summary,
           timestamp: e.inserted_at
         }
       end)

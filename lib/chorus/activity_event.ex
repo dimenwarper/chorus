@@ -10,6 +10,7 @@ defmodule Chorus.ActivityEvent do
     field :detail, :string
     field :user, :string
     field :url, :string
+    field :summary, :string
 
     belongs_to :idea, Chorus.Ideas.Idea
 

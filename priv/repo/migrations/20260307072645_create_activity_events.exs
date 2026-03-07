@@ -9,6 +9,7 @@ defmodule Chorus.Repo.Migrations.CreateActivityEvents do
       add :detail, :string
       add :user, :string
       add :url, :string
+      add :summary, :string
       add :idea_id, references(:ideas, type: :binary_id, on_delete: :nilify_all)
 
       timestamps(type: :utc_datetime)
