@@ -94,12 +94,40 @@ defmodule Chorus.Tasks do
   end
 
   def recent_activity(limit \\ 20) do
-    from(t in Task,
-      where: t.status in ["running", "completed", "failed"],
-      preload: [:idea],
-      order_by: [desc: t.updated_at],
-      limit: ^limit
-    )
-    |> Repo.all()
+    tasks =
+      from(t in Task,
+        where: t.status in ["running", "completed", "failed"],
+        preload: [:idea],
+        order_by: [desc: t.updated_at],
+        limit: ^limit
+      )
+      |> Repo.all()
+
+    events =
+      from(e in Chorus.ActivityEvent,
+        preload: [:idea],
+        order_by: [desc: e.inserted_at],
+        limit: ^limit
+      )
+      |> Repo.all()
+      |> Enum.map(fn e ->
+        %{
+          event: e.event,
+          task_title: e.title,
+          idea_identifier: e.idea && e.idea.identifier,
+          idea_title: e.idea && e.idea.title,
+          branch: nil,
+          last_output: e.detail,
+          timestamp: e.inserted_at
+        }
+      end)
+
+    # Merge and sort by time, take limit
+    (tasks ++ events)
+    |> Enum.sort_by(fn
+      %{timestamp: t} -> t
+      %{updated_at: t} -> t
+    end, {:desc, DateTime})
+    |> Enum.take(limit)
   end
 end

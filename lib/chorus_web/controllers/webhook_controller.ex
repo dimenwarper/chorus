@@ -72,14 +72,25 @@ defmodule ChorusWeb.WebhookController do
 
   defp broadcast_github_activity(repo, details) do
     repo_url = repo["html_url"]
-
     idea = find_idea_by_repo(repo_url)
     idea_title = if idea, do: idea.title, else: repo["full_name"]
     idea_identifier = if idea, do: idea.identifier, else: nil
+    event_name = "github_#{details.type}"
+    title = format_github_title(details)
 
+    # Persist to DB
+    Chorus.Repo.insert!(%Chorus.ActivityEvent{
+      event: event_name,
+      title: title,
+      detail: details[:user],
+      url: details[:url],
+      idea_id: if(idea, do: idea.id)
+    })
+
+    # Broadcast for live updates
     activity = %{
-      event: "github_#{details.type}",
-      task_title: format_github_title(details),
+      event: event_name,
+      task_title: title,
       idea_identifier: idea_identifier,
       idea_title: idea_title,
       branch: nil,
