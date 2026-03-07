@@ -71,8 +71,8 @@ defmodule Chorus.Ideas.Approval do
     end
   end
 
-  defp clone_repo(clone_url, workspace_root, idea) do
-    key = Workspace.workspace_key(idea)
+  defp clone_repo(clone_url, workspace_root, _idea) do
+    key = clone_url |> String.trim_trailing("/") |> String.trim_trailing(".git") |> String.split("/") |> List.last()
     path = Path.join(workspace_root, key) |> Path.expand()
     abs_root = Path.expand(workspace_root)
 
@@ -87,7 +87,7 @@ defmodule Chorus.Ideas.Approval do
 
       case System.cmd("git", ["clone", clone_url, path], stderr_to_stdout: true) do
         {_, 0} ->
-          Logger.info("Cloned repo for #{idea.identifier} to #{path}")
+          Logger.info("Cloned repo #{key} to #{path}")
           {:ok, path}
 
         {output, code} ->
