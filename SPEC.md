@@ -1135,77 +1135,74 @@ Everything from Symphony Section 18.2, plus:
 
 ### 19.1 Target Environment
 
-The service is designed for single-server VPS deployment on Ubuntu/Debian Linux. The setup script (`deploy/setup.sh`) automates the full provisioning process.
+The service is designed for single-server deployment. A setup script should automate the full provisioning process for the target OS.
 
 ### 19.2 System Dependencies
 
-Installed by the setup script:
+The deployment environment requires:
 
-- **Erlang/OTP 28+** and **Elixir 1.19+** — installed via asdf version manager.
-- **SQLite3** — system package (`sqlite3`, `libsqlite3-dev`).
-- **Caddy** — reverse proxy with automatic HTTPS certificate provisioning via Let's Encrypt.
+- **Application runtime** — language runtime and build tools for the chosen implementation.
+- **Database engine** — persistent storage backend matching the chosen data layer (e.g., SQLite, PostgreSQL).
+- **Reverse proxy** — TLS-terminating proxy with automatic certificate provisioning (e.g., Caddy, nginx + certbot).
 - **Git** — for repo cloning and workspace management.
-- **Build tools** — `build-essential`, `autoconf`, `libncurses-dev`, `libssl-dev` for compiling Erlang from source.
+- **Process supervisor** — service manager for automatic restarts and lifecycle management (e.g., systemd).
 
 ### 19.3 Directory Layout
 
-| Path | Purpose |
+The deployment should establish a clear separation of concerns:
+
+| Directory | Purpose |
 |---|---|
-| `/opt/chorus/` | Application release (built by `mix release`) |
-| `/var/lib/chorus/` | Persistent data: SQLite database |
-| `/etc/chorus/env` | Environment variables (secrets, config) |
-| `/opt/chorus/.chorus/` | Agent workspaces (cloned repos, per-task branches) |
+| Application directory | Built/compiled application and release artifacts |
+| Data directory | Persistent data (database files) |
+| Config directory | Environment variables and secrets |
+| Workspace directory | Agent workspaces (cloned repos, per-task branches) |
 
-### 19.4 Setup Script (`deploy/setup.sh`)
+### 19.4 Setup Script
 
-Run as root on a fresh server. The script:
+The repository should include an idempotent setup script that:
 
-1. Installs system dependencies (apt packages).
-2. Installs Erlang and Elixir via asdf (skips if already present).
-3. Installs Caddy reverse proxy (skips if already present).
-4. Creates a `chorus` system user and required directories.
-5. Clones (or pulls) the repository to `/opt/chorus/`.
-6. Builds a production release (`MIX_ENV=prod mix release`).
-7. Generates a `SECRET_KEY_BASE` and writes the config template to `/etc/chorus/env`.
-8. Runs database migrations via `Chorus.Release.migrate()`.
-9. Installs and enables the systemd service.
+1. Installs system dependencies.
+2. Installs the application runtime (skips if already present).
+3. Installs a reverse proxy (skips if already present).
+4. Creates a dedicated service user and required directories.
+5. Clones (or updates) the application source.
+6. Builds a production release.
+7. Generates secrets and writes the config template.
+8. Runs database migrations.
+9. Installs and enables the process supervisor service.
 
-The script is idempotent — running it again pulls the latest code and rebuilds.
+Running the script again should pull the latest code and rebuild without disrupting existing configuration.
 
 ### 19.5 Post-Setup Steps
 
 After running the setup script, the operator must:
 
-1. Edit `/etc/chorus/env` with production values (domain, OAuth credentials, admin ID, GitHub token).
-2. Configure Caddy with the production domain in `/etc/caddy/Caddyfile` and restart Caddy.
-3. Update the GitHub OAuth app's callback URL to `https://<domain>/auth/github/callback`.
-4. Start the service: `systemctl start chorus`.
+1. Edit the config file with production values (domain, OAuth credentials, admin ID, GitHub token).
+2. Configure the reverse proxy with the production domain and restart it.
+3. Update the OAuth provider's callback URL to `https://<domain>/auth/<provider>/callback`.
+4. Start the service.
 
-### 19.6 Systemd Service
+### 19.6 Process Supervision
 
-The service runs as the `chorus` system user under systemd with:
+The service should run as a dedicated system user with:
 
-- Automatic restart on failure (5-second delay).
-- Security hardening: `NoNewPrivileges`, `ProtectSystem=strict`, write access limited to data and workspace directories.
-- Environment loaded from `/etc/chorus/env`.
-- Managed via standard systemd commands (`start`, `stop`, `restart`, `status`, `journalctl`).
+- Automatic restart on failure with a brief delay.
+- Security hardening: restricted filesystem access, limited to data and workspace directories.
+- Environment loaded from the config file.
 
 ### 19.7 HTTPS
 
-Caddy handles TLS certificate provisioning and renewal automatically via Let's Encrypt. The Phoenix application runs HTTP on the configured port (default 4000) behind Caddy's reverse proxy. The `force_ssl` config with `rewrite_on: [:x_forwarded_proto]` ensures Phoenix respects the HTTPS termination at the proxy layer.
+TLS must be terminated at the reverse proxy layer. The application runs HTTP on an internal port behind the proxy. The application must respect forwarded protocol headers (e.g., `X-Forwarded-Proto`) to correctly generate HTTPS URLs and enforce secure cookies.
 
 ### 19.8 Updates
 
-To deploy a new version:
+Deploying a new version should:
 
-```
-cd /opt/chorus
-git pull
-MIX_ENV=prod mix deps.get --only prod
-MIX_ENV=prod mix compile
-MIX_ENV=prod mix assets.deploy
-MIX_ENV=prod mix release --overwrite
-sudo systemctl restart chorus
-```
+1. Pull the latest source.
+2. Rebuild dependencies and compile.
+3. Rebuild static assets.
+4. Build a new release.
+5. Restart the service.
 
-Or re-run the setup script, which performs the same steps.
+The setup script should support this workflow when re-run.
