@@ -46,6 +46,7 @@ defmodule Chorus.Orchestrator.Server do
         }
 
         Logger.info("Orchestrator started (poll=#{config.poll_interval_ms}ms, max_agents=#{config.max_concurrent_agents})")
+        recover_stale_tasks()
         schedule_tick(config.poll_interval_ms)
         {:ok, state}
 
@@ -161,7 +162,12 @@ defmodule Chorus.Orchestrator.Server do
           AgentRunner.stop(runner)
           Tasks.fail_task(task_id, "stall timeout")
           broadcast_activity(acc, runner, "stalled")
-          State.schedule_retry(acc, task_id, "stall timeout")
+          task = Tasks.get_task!(task_id)
+          if task.attempt < acc.config.max_retries do
+            State.schedule_retry(acc, task_id, "stall timeout")
+          else
+            State.remove_running(acc, task_id)
+          end
         else
           acc
         end
@@ -228,7 +234,12 @@ defmodule Chorus.Orchestrator.Server do
       {:error, reason} ->
         Logger.error("Failed to dispatch task #{task_id}: #{reason}")
         Tasks.fail_task(task_id, reason)
-        State.schedule_retry(state, task_id, reason)
+        task = Tasks.get_task!(task_id)
+        if task.attempt < state.config.max_retries do
+          State.schedule_retry(state, task_id, reason)
+        else
+          State.remove_running(state, task_id)
+        end
     end
   end
 
@@ -272,7 +283,15 @@ defmodule Chorus.Orchestrator.Server do
           Logger.warning("Task failed: #{runner.task.title} — #{error_msg}")
           Tasks.fail_task(task_id, error_msg)
           broadcast_activity(state, runner, "failed")
-          State.schedule_retry(state, task_id, error_msg)
+
+          # Only retry if under max_retries (check DB attempt count, not in-memory)
+          task = Tasks.get_task!(task_id)
+          if task.attempt < state.config.max_retries do
+            State.schedule_retry(state, task_id, error_msg)
+          else
+            Logger.warning("Task #{task_id} exceeded max retries (#{task.attempt}), giving up")
+            State.remove_running(state, task_id)
+          end
         end
 
       nil ->
@@ -348,6 +367,19 @@ defmodule Chorus.Orchestrator.Server do
       end
     else
       nil
+    end
+  end
+
+  defp recover_stale_tasks do
+    stale = Tasks.fetch_running_tasks()
+
+    Enum.each(stale, fn task ->
+      Logger.warning("Recovering stale running task #{task.id} (#{task.title}) — marking as failed")
+      Tasks.fail_task(task.id, "stale: orchestrator restarted while task was running")
+    end)
+
+    if length(stale) > 0 do
+      Logger.info("Recovered #{length(stale)} stale task(s)")
     end
   end
 
