@@ -379,7 +379,7 @@ defmodule ChorusWeb.AdminLive do
                         <div class="card-body py-2.5 px-3">
                           <div class="flex items-start justify-between gap-1">
                             <div class="flex-1 min-w-0">
-                              <p class="font-medium text-sm leading-tight">{task.title}</p>
+                              <.link href={~p"/tasks/#{task.id}"} class="font-medium text-sm leading-tight hover:underline">{task.title}</.link>
                               <%= if task.idea do %>
                                 <span class="text-xs text-base-content/40">{task.idea.title}</span>
                               <% end %>

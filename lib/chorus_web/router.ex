@@ -42,6 +42,7 @@ defmodule ChorusWeb.Router do
 
     live "/", BoardLive
     live "/ideas/:identifier", IdeaLive
+    live "/tasks/:id", TaskLive
   end
 
   # Admin UI (requires admin)

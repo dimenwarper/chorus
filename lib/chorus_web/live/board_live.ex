@@ -378,7 +378,7 @@ defmodule ChorusWeb.BoardLive do
                             <p class="text-xs text-base-content/50 italic line-clamp-2">{item.summary}</p>
                           <% end %>
                         <% else %>
-                          <p class="text-xs text-base-content/60 truncate">{item.title}</p>
+                          <.link href={~p"/tasks/#{item.id}"} class="text-xs text-base-content/60 truncate hover:underline">{item.title}</.link>
                         <% end %>
                       </div>
                     </div>
