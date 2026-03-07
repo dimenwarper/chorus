@@ -1,0 +1,22 @@
+[Unit]
+Description=Chorus - Idea Board + Agent Orchestrator
+After=network.target
+
+[Service]
+Type=exec
+User=chorus
+Group=chorus
+WorkingDirectory=/opt/chorus
+EnvironmentFile=/etc/chorus/env
+ExecStart=/opt/chorus/bin/chorus start
+ExecStop=/opt/chorus/bin/chorus stop
+Restart=on-failure
+RestartSec=5
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/chorus /opt/chorus/.chorus
+
+[Install]
+WantedBy=multi-user.target

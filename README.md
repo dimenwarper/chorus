@@ -77,6 +77,24 @@ You are working on {{idea.title}}.
 ...
 ```
 
+## Deploying to a VPS
+
+There's a setup script that installs everything on a fresh Ubuntu/Debian server:
+
+```bash
+sudo bash deploy/setup.sh
+```
+
+This installs Erlang/Elixir (via asdf), Caddy (reverse proxy with auto HTTPS), builds a production release, creates a systemd service, and generates the config template at `/etc/chorus/env`.
+
+After setup, edit `/etc/chorus/env` with your values, configure Caddy with your domain, and start the service:
+
+```bash
+sudo systemctl start chorus
+```
+
+See `deploy/` for the systemd service file, Caddy config example, and env template.
+
 ## Development
 
 ```bash
