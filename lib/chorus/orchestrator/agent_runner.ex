@@ -12,12 +12,12 @@ defmodule Chorus.Orchestrator.AgentRunner do
   defstruct [:task, :idea, :repo_path, :branch_name, :port, :started_at, :status, :last_output, :output_buffer]
 
   def start(task, idea, %{config: config, prompt_template: template, board: board}) do
-    # Use existing repo_path if set, otherwise ensure one exists
+    # Use existing repo_path if valid, otherwise clone from repo_url or init fresh
     repo_result =
       if idea.repo_path && File.dir?(Path.join(idea.repo_path, ".git")) do
         {:ok, idea.repo_path}
       else
-        Workspace.ensure_repo(config.workspace_root, idea)
+        clone_or_init(idea, config.workspace_root)
       end
 
     case repo_result do
@@ -87,6 +87,44 @@ defmodule Chorus.Orchestrator.AgentRunner do
   end
 
   def stop(runner), do: %{runner | status: :stopped}
+
+  defp clone_or_init(idea, workspace_root) do
+    key = Workspace.sanitize_key(idea.identifier)
+    path = Path.join(workspace_root, key) |> Path.expand()
+
+    cond do
+      # Already cloned
+      File.dir?(Path.join(path, ".git")) ->
+        persist_repo_path(idea, path)
+        {:ok, path}
+
+      # Has a remote repo_url — clone it
+      idea.repo_url && idea.repo_url != "" ->
+        File.mkdir_p!(Path.dirname(path))
+
+        case System.cmd("git", ["clone", idea.repo_url, path], stderr_to_stdout: true) do
+          {_, 0} ->
+            Logger.info("Cloned #{idea.repo_url} to #{path}")
+            persist_repo_path(idea, path)
+            {:ok, path}
+
+          {output, code} ->
+            {:error, "git clone failed (exit #{code}): #{output}"}
+        end
+
+      # No remote — init a fresh local repo
+      true ->
+        Workspace.ensure_repo(workspace_root, idea)
+    end
+  end
+
+  defp persist_repo_path(idea, path) do
+    if idea.repo_path != path do
+      idea
+      |> Ecto.Changeset.change(repo_path: path)
+      |> Chorus.Repo.update()
+    end
+  end
 
   defp launch_agent(entry, command, prompt, repo_path, branch_name) do
     # Create the task branch
