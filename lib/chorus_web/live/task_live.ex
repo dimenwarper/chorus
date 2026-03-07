@@ -9,7 +9,22 @@ defmodule ChorusWeb.TaskLive do
   def mount(%{"id" => id}, _session, socket) do
     task = Tasks.get_task!(id) |> Repo.preload(:idea)
 
-    {:ok, assign(socket, task: task)}
+    if connected?(socket) && task.status == "running" do
+      Phoenix.PubSub.subscribe(Chorus.PubSub, "task:#{id}")
+    end
+
+    {:ok, assign(socket, task: task, live_output: [])}
+  end
+
+  @impl true
+  def handle_info({:task_output, line}, socket) do
+    updated = socket.assigns.live_output ++ [line]
+    {:noreply, assign(socket, live_output: updated)}
+  end
+
+  def handle_info({:task_done, _status}, socket) do
+    task = Tasks.get_task!(socket.assigns.task.id) |> Repo.preload(:idea)
+    {:noreply, assign(socket, task: task, live_output: [])}
   end
 
   defp status_badge_class(status) do
@@ -82,6 +97,20 @@ defmodule ChorusWeb.TaskLive do
                 </div>
               <% end %>
             </div>
+
+            <%= if @task.status == "running" do %>
+              <div class="mb-6">
+                <h2 class="text-lg font-semibold mb-2 flex items-center gap-2">
+                  Live Output
+                  <span class="loading loading-dots loading-xs"></span>
+                </h2>
+                <pre
+                  id="live-output"
+                  phx-hook="ScrollBottom"
+                  class="bg-base-200 text-sm p-4 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-[70vh] overflow-y-auto font-mono"
+                ><%= for line <- @live_output do %>{line}<%= "\n" %><% end %></pre>
+              </div>
+            <% end %>
 
             <%= if @task.error do %>
               <div class="mb-6">

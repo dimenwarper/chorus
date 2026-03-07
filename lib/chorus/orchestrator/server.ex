@@ -255,6 +255,7 @@ defmodule Chorus.Orchestrator.Server do
           output_buffer: (runner.output_buffer || "") <> line <> "\n"
         }
         broadcast_activity(state, updated, "working")
+        Phoenix.PubSub.broadcast(Chorus.PubSub, "task:#{task_id}", {:task_output, line})
         State.add_running(state, task_id, updated)
 
       nil ->
@@ -274,6 +275,7 @@ defmodule Chorus.Orchestrator.Server do
           pr_url = push_and_create_pr(runner)
           Tasks.complete_task(task_id, output, pr_url: pr_url)
           broadcast_activity(state, runner, "completed")
+          Phoenix.PubSub.broadcast(Chorus.PubSub, "task:#{task_id}", {:task_done, :completed})
           Phoenix.PubSub.broadcast(Chorus.PubSub, "board:#{state.board_id}", :ideas_updated)
           State.mark_completed(state, task_id, :success)
         else
@@ -283,6 +285,7 @@ defmodule Chorus.Orchestrator.Server do
           Logger.warning("Task failed: #{runner.task.title} — #{error_msg}")
           Tasks.fail_task(task_id, error_msg)
           broadcast_activity(state, runner, "failed")
+          Phoenix.PubSub.broadcast(Chorus.PubSub, "task:#{task_id}", {:task_done, :failed})
 
           # Only retry if under max_retries (check DB attempt count, not in-memory)
           task = Tasks.get_task!(task_id)
