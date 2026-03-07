@@ -735,6 +735,8 @@ Identical to Symphony Section 8.3. The `max_concurrent_agents` setting limits th
 
 Identical to Symphony Section 8.4, applied to tasks. Each failed task is independently retried up to `max_retries` times with exponential backoff.
 
+**Retry count persistence:** The retry limit must be checked against the task's `attempt` count in persistent storage, not an in-memory counter. In-memory retry state is lost on process restart; relying on it can cause unbounded retry loops if the orchestrator restarts while tasks are failing.
+
 ### 8.5 Active Run Reconciliation
 
 Two parts:
@@ -756,9 +758,13 @@ For each running task, check its parent idea's status:
 - If idea is `rejected` or `pending`: terminate agent, mark task failed.
 - If idea is active (`approved`, `in_progress`): continue.
 
-### 8.6 Startup Workspace Cleanup
+### 8.6 Startup Recovery
 
-On startup, query the Idea Store for ideas in terminal statuses (`completed`, `archived`). Remove corresponding workspace directories.
+On startup, the orchestrator must perform two recovery steps:
+
+**Stale task recovery:** Query the Task Store for tasks in `running` status. These are stale — the orchestrator restarted while they were executing, so the agent subprocess is gone. Mark each as `failed` with an error indicating the orchestrator restarted. This prevents them from being invisible (neither dispatched nor available for dispatch).
+
+**Workspace cleanup:** Query the Idea Store for ideas in terminal statuses (`completed`, `archived`). Remove corresponding workspace directories.
 
 ## 9. Workspace Management and Safety
 
@@ -940,7 +946,7 @@ Required additional log events:
 - Upvote created/removed (with `idea_id`, anonymized voter identity).
 - Task created (with `task_id`, `idea_id`).
 - Task dispatched (with `task_id`, `idea_identifier`, `branch_name`).
-- Task completed/failed (with `task_id`, `duration`, `exit_code`).
+- Task completed/failed (with `task_id`, `duration`, `exit_code`). On failure, the error message must include the agent's captured output (stdout/stderr), not just the exit code.
 
 ### 13.2 Public Board Status
 
