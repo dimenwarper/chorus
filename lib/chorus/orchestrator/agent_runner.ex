@@ -9,7 +9,7 @@ defmodule Chorus.Orchestrator.AgentRunner do
   alias Chorus.Orchestrator.Workspace
   alias Chorus.Workflow.Prompt
 
-  defstruct [:task, :idea, :repo_path, :branch_name, :port, :started_at, :status, :last_output, :output_buffer]
+  defstruct [:task, :idea, :repo_path, :branch_name, :port, :started_at, :status, :last_output, :output_buffer, :last_broadcast_at]
 
   def start(task, idea, %{config: config, prompt_template: template, board: board}) do
     # Use existing repo_path if valid, otherwise clone from repo_url or init fresh

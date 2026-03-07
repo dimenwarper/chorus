@@ -247,14 +247,22 @@ defmodule Chorus.Orchestrator.Server do
   # Agent subprocess handling
   # ---------------------------------------------------------------------------
 
+  @working_broadcast_interval_ms 5_000
+
   defp handle_agent_output(state, port, line) do
     case find_runner_by_port(state, port) do
       {task_id, runner} ->
+        now = System.monotonic_time(:millisecond)
+        should_broadcast = is_nil(runner.last_broadcast_at) or
+          (now - runner.last_broadcast_at) >= @working_broadcast_interval_ms
+
         updated = %{runner |
           last_output: line,
-          output_buffer: (runner.output_buffer || "") <> line <> "\n"
+          output_buffer: (runner.output_buffer || "") <> line <> "\n",
+          last_broadcast_at: if(should_broadcast, do: now, else: runner.last_broadcast_at)
         }
-        broadcast_activity(state, updated, "working")
+
+        if should_broadcast, do: broadcast_activity(state, updated, "working")
         Phoenix.PubSub.broadcast(Chorus.PubSub, "task:#{task_id}", {:task_output, line})
         State.add_running(state, task_id, updated)
 
