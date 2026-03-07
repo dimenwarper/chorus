@@ -31,8 +31,8 @@ defmodule ChorusWeb.Plugs.RequireAuth do
 
   defp admin?(user) do
     case Application.get_env(:chorus, :admin_github_id) do
-      nil -> true
-      "" -> true
+      nil -> false
+      "" -> false
       admin_id -> user["id"] == admin_id
     end
   end

@@ -159,15 +159,16 @@ defmodule ChorusWeb.AdminLive do
         repo_url = params["repo_url"]
 
         if repo_url && repo_url != "" do
-          config = load_config()
+          if valid_git_url?(repo_url) do
+            config = load_config()
 
-          with {:ok, idea} <- Ideas.transition_status(idea.id, "approved"),
-               {:ok, _idea} <- Ideas.update_idea(idea.id, %{repo_url: repo_url}) do
-            # Clone the repo to workspace
-            workspace_root = config.workspace_root
-            repo_path = Path.join(workspace_root, Chorus.Orchestrator.Workspace.sanitize_key(idea.title))
-            clone_if_needed(repo_url, repo_path)
-            Ideas.update_idea(idea.id, %{repo_path: repo_path})
+            with {:ok, idea} <- Ideas.transition_status(idea.id, "approved"),
+                 {:ok, _idea} <- Ideas.update_idea(idea.id, %{repo_url: repo_url}) do
+              workspace_root = config.workspace_root
+              repo_path = Path.join(workspace_root, Chorus.Orchestrator.Workspace.sanitize_key(idea.title))
+              clone_if_needed(repo_url, repo_path)
+              Ideas.update_idea(idea.id, %{repo_path: repo_path})
+            end
           end
         end
 
@@ -180,23 +181,26 @@ defmodule ChorusWeb.AdminLive do
   end
 
   def handle_event("update_idea_repo", %{"idea_id" => idea_id, "repo_url" => repo_url}, socket) do
-    changes =
-      if repo_url == "" do
-        %{repo_url: nil, repo_path: nil}
-      else
+    cond do
+      repo_url == "" ->
+        case Ideas.update_idea(idea_id, %{repo_url: nil, repo_path: nil}) do
+          {:ok, _} -> {:noreply, socket |> reload_all() |> put_flash(:info, "Repo cleared")}
+          {:error, _} -> {:noreply, put_flash(socket, :error, "Could not update repo")}
+        end
+
+      not valid_git_url?(repo_url) ->
+        {:noreply, put_flash(socket, :error, "Invalid repo URL — must use HTTPS")}
+
+      true ->
         config = load_config()
         idea = Ideas.get_idea!(idea_id)
         repo_path = Path.join(config.workspace_root, Chorus.Orchestrator.Workspace.sanitize_key(idea.title))
         clone_if_needed(repo_url, repo_path)
-        %{repo_url: repo_url, repo_path: repo_path}
-      end
 
-    case Ideas.update_idea(idea_id, changes) do
-      {:ok, _} ->
-        {:noreply, socket |> reload_all() |> put_flash(:info, "Repo updated")}
-
-      {:error, _} ->
-        {:noreply, put_flash(socket, :error, "Could not update repo")}
+        case Ideas.update_idea(idea_id, %{repo_url: repo_url, repo_path: repo_path}) do
+          {:ok, _} -> {:noreply, socket |> reload_all() |> put_flash(:info, "Repo updated")}
+          {:error, _} -> {:noreply, put_flash(socket, :error, "Could not update repo")}
+        end
     end
   end
 
@@ -229,12 +233,20 @@ defmodule ChorusWeb.AdminLive do
     end
   end
 
+  defp valid_git_url?(url) do
+    String.starts_with?(url, "https://")
+  end
+
   defp clone_if_needed(repo_url, repo_path) do
     if File.dir?(Path.join(repo_path, ".git")) do
       :ok
     else
-      File.mkdir_p!(Path.dirname(repo_path))
-      System.cmd("git", ["clone", repo_url, repo_path], stderr_to_stdout: true)
+      if valid_git_url?(repo_url) do
+        File.mkdir_p!(Path.dirname(repo_path))
+        System.cmd("git", ["clone", repo_url, repo_path], stderr_to_stdout: true)
+      else
+        {:error, "Invalid repo URL — must use HTTPS"}
+      end
     end
   end
 

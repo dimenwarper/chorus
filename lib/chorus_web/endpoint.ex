@@ -8,7 +8,9 @@ defmodule ChorusWeb.Endpoint do
     store: :cookie,
     key: "_chorus_key",
     signing_salt: "z7dRXHTR",
-    same_site: "Lax"
+    encryption_salt: "kR4xMw9V",
+    same_site: "Lax",
+    secure: Mix.env() == :prod
   ]
 
   socket "/live", Phoenix.LiveView.Socket,
