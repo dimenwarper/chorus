@@ -76,7 +76,7 @@ defmodule Chorus.Ideas.Idea do
 
   def admin_changeset(idea, attrs) do
     idea
-    |> cast(attrs, [:title, :description, :priority, :tags, :admin_notes, :status, :rejection_reason])
+    |> cast(attrs, [:title, :description, :priority, :tags, :admin_notes, :status, :rejection_reason, :repo_url, :repo_path])
     |> maybe_validate_transition(idea)
   end
 

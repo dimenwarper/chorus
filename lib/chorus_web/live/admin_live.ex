@@ -140,6 +140,66 @@ defmodule ChorusWeb.AdminLive do
     end
   end
 
+  def handle_event("admin_create_idea", %{"title" => title} = params, socket) do
+    board = socket.assigns.board
+    user = socket.assigns.current_user
+
+    attrs = %{
+      title: title,
+      description: params["description"],
+      board_id: board.id,
+      submitted_by_user_id: user["id"],
+      submitted_by_provider: user["provider"] || "admin",
+      submitted_by_display_name: user["name"] || "Admin"
+    }
+
+    case Ideas.create_idea(attrs) do
+      {:ok, idea} ->
+        # If repo_url provided, approve immediately and set repo
+        repo_url = params["repo_url"]
+
+        if repo_url && repo_url != "" do
+          config = load_config()
+
+          with {:ok, idea} <- Ideas.transition_status(idea.id, "approved"),
+               {:ok, _idea} <- Ideas.update_idea(idea.id, %{repo_url: repo_url}) do
+            # Clone the repo to workspace
+            workspace_root = config.workspace_root
+            repo_path = Path.join(workspace_root, Chorus.Orchestrator.Workspace.sanitize_key(idea.title))
+            clone_if_needed(repo_url, repo_path)
+            Ideas.update_idea(idea.id, %{repo_path: repo_path})
+          end
+        end
+
+        Phoenix.PubSub.broadcast(Chorus.PubSub, "board:#{board.id}", :ideas_updated)
+        {:noreply, socket |> reload_all() |> put_flash(:info, "Idea created")}
+
+      {:error, changeset} ->
+        {:noreply, put_flash(socket, :error, "Error: #{inspect(Chorus.Helpers.changeset_errors(changeset))}")}
+    end
+  end
+
+  def handle_event("update_idea_repo", %{"idea_id" => idea_id, "repo_url" => repo_url}, socket) do
+    changes =
+      if repo_url == "" do
+        %{repo_url: nil, repo_path: nil}
+      else
+        config = load_config()
+        idea = Ideas.get_idea!(idea_id)
+        repo_path = Path.join(config.workspace_root, Chorus.Orchestrator.Workspace.sanitize_key(idea.title))
+        clone_if_needed(repo_url, repo_path)
+        %{repo_url: repo_url, repo_path: repo_path}
+      end
+
+    case Ideas.update_idea(idea_id, changes) do
+      {:ok, _} ->
+        {:noreply, socket |> reload_all() |> put_flash(:info, "Repo updated")}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "Could not update repo")}
+    end
+  end
+
   def handle_event("update_board", %{"title" => title, "description" => desc}, socket) do
     case Boards.update_board(socket.assigns.board, %{title: title, description: desc}) do
       {:ok, board} -> {:noreply, socket |> assign(board: board) |> put_flash(:info, "Board updated")}
@@ -166,6 +226,15 @@ defmodule ChorusWeb.AdminLive do
       status.config
     catch
       :exit, _ -> %Chorus.Workflow.Config{}
+    end
+  end
+
+  defp clone_if_needed(repo_url, repo_path) do
+    if File.dir?(Path.join(repo_path, ".git")) do
+      :ok
+    else
+      File.mkdir_p!(Path.dirname(repo_path))
+      System.cmd("git", ["clone", repo_url, repo_path], stderr_to_stdout: true)
     end
   end
 
@@ -250,6 +319,9 @@ defmodule ChorusWeb.AdminLive do
               <%= if length(@pending_ideas) > 0 do %>
                 <span class="badge badge-warning badge-sm ml-1">{length(@pending_ideas)}</span>
               <% end %>
+            </a>
+            <a role="tab" class={"tab #{if @tab == "ideas", do: "tab-active"}"} phx-click="switch_tab" phx-value-tab="ideas">
+              Ideas
             </a>
             <a role="tab" class={"tab #{if @tab == "settings", do: "tab-active"}"} phx-click="switch_tab" phx-value-tab="settings">
               Settings
@@ -404,6 +476,69 @@ defmodule ChorusWeb.AdminLive do
                   </div>
                 <% end %>
               <% end %>
+            </div>
+          <% end %>
+
+          <%!-- IDEAS TAB --%>
+          <%= if @tab == "ideas" do %>
+            <div class="space-y-4">
+              <%!-- Create Idea form --%>
+              <div class="card bg-base-100 shadow-sm">
+                <div class="card-body py-4 px-5">
+                  <h3 class="font-semibold text-sm mb-2">Create Idea</h3>
+                  <.form for={%{}} phx-submit="admin_create_idea" class="flex flex-wrap items-end gap-3">
+                    <div class="form-control flex-1 min-w-[200px]">
+                      <label class="label py-0.5"><span class="label-text text-xs">Title</span></label>
+                      <input type="text" name="title" class="input input-bordered input-sm" required minlength="5" placeholder="Idea title" />
+                    </div>
+                    <div class="form-control flex-1 min-w-[200px]">
+                      <label class="label py-0.5"><span class="label-text text-xs">Description</span></label>
+                      <input type="text" name="description" class="input input-bordered input-sm" placeholder="Optional description" />
+                    </div>
+                    <div class="form-control flex-1 min-w-[200px]">
+                      <label class="label py-0.5"><span class="label-text text-xs">Repo URL</span></label>
+                      <input type="text" name="repo_url" class="input input-bordered input-sm" placeholder="https://github.com/..." />
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">Create</button>
+                  </.form>
+                </div>
+              </div>
+
+              <%!-- Ideas table --%>
+              <div class="card bg-base-100 shadow-sm overflow-x-auto">
+                <table class="table table-sm">
+                  <thead>
+                    <tr>
+                      <th class="w-24">ID</th>
+                      <th>Title</th>
+                      <th class="w-28">Status</th>
+                      <th>Repo URL</th>
+                      <th class="w-20"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <%= for idea <- @all_ideas do %>
+                      <tr>
+                        <td class="font-mono text-xs text-base-content/50">{idea.identifier}</td>
+                        <td class="text-sm">{idea.title}</td>
+                        <td><span class={"badge badge-xs #{idea_status_badge(idea.status)}"}>{idea.status |> String.replace("_", " ")}</span></td>
+                        <td>
+                          <.form for={%{}} phx-submit="update_idea_repo" class="flex items-center gap-1">
+                            <input type="hidden" name="idea_id" value={idea.id} />
+                            <input type="text" name="repo_url" value={idea.repo_url || ""} class="input input-bordered input-xs flex-1 font-mono text-xs" placeholder="No repo" />
+                            <button type="submit" class="btn btn-ghost btn-xs px-1" title="Save">&#10003;</button>
+                          </.form>
+                        </td>
+                        <td>
+                          <%= if idea.repo_url do %>
+                            <a href={idea.repo_url} target="_blank" class="btn btn-ghost btn-xs px-1" title="Open repo">&#x2197;</a>
+                          <% end %>
+                        </td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
             </div>
           <% end %>
 

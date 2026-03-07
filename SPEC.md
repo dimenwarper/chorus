@@ -464,7 +464,7 @@ All admin endpoints require board owner authentication.
 
 #### 5.2.1 Admin Board (`GET /admin`)
 
-Displays a unified admin interface with three tabs:
+Displays a unified admin interface with four tabs:
 
 **Board Tab (Kanban):**
 
@@ -481,6 +481,13 @@ Displays a unified admin interface with three tabs:
 - Pending ideas queue with approve/reject buttons.
 - Shows idea identifier, title, description, submitter, and upvote count.
 - Badge count of pending ideas on the tab.
+
+**Ideas Tab:**
+
+- "Create Idea" form at the top: title, description, and optional repo URL. When a repo URL is provided, the idea is auto-approved and the repo is cloned to the local workspace. This allows the board owner to onboard existing repositories into the system.
+- Table of all non-archived/non-rejected ideas showing: identifier, title, status badge, and editable repo URL field.
+- Inline repo URL editing: changing the repo URL clones the repo to the workspace and updates the idea's `repo_path`. Clearing the URL removes both `repo_url` and `repo_path`.
+- External link button to open the repo URL in a new tab (when set).
 
 **Settings Tab:**
 
