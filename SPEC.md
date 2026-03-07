@@ -155,6 +155,7 @@ Important boundaries:
 - Persistent storage backend for the Idea Store and Task Store (database, file-backed store, or hosted service).
 - Local filesystem for workspaces and logs.
 - Git CLI for per-idea repository and per-task branch management.
+- GitHub API for creating per-idea repositories on approval (requires `GITHUB_TOKEN` with `repo` scope).
 - Coding-agent executable (e.g., Claude Code CLI) that accepts prompts via stdin or file.
 - Host environment authentication for the coding agent.
 - Optional external issue tracker (Linear, etc.) if the workflow prompt directs the agent to sync work there.
@@ -207,7 +208,8 @@ Fields:
 - `tags` (list of strings) — Freeform labels applied by board owner or submitter.
 - `admin_notes` (string or null) — Private notes from board owner (not shown publicly).
 - `rejection_reason` (string or null) — Shown to submitter if rejected.
-- `repo_path` (string or null) — Filesystem path to this idea's git repository, set when workspace is first created.
+- `repo_path` (string or null) — Filesystem path to this idea's git repository, set on approval.
+- `repo_url` (string or null) — URL of the GitHub repository created for this idea, set on approval.
 - `created_at` (timestamp)
 - `updated_at` (timestamp)
 - `approved_at` (timestamp or null)
@@ -222,7 +224,7 @@ Relationships:
 Lifecycle states for an idea:
 
 - `pending` — Submitted, awaiting board owner review. Visible on board but marked as pending.
-- `approved` — Board owner has approved. Tasks can be created and dispatched.
+- `approved` — Board owner has approved. A GitHub repository is created and cloned to the local workspace. Tasks can be created and dispatched.
 - `in_progress` — At least one task is actively running.
 - `completed` — All tasks finished successfully (or board owner marked complete).
 - `rejected` — Board owner declined the idea. Optionally visible with rejection reason.
@@ -230,7 +232,7 @@ Lifecycle states for an idea:
 
 State transition rules:
 
-- `pending` -> `approved` | `rejected` (board owner action)
+- `pending` -> `approved` | `rejected` (board owner action). On approval, the system creates a GitHub repository named `<board-slug>-<idea-title-slug>` and clones it to the local workspace.
 - `approved` -> `in_progress` (automatic when first task dispatches) | `archived` (board owner)
 - `in_progress` -> `completed` | `approved` (all tasks done or released) | `archived` (board owner)
 - `completed` -> `archived` (board owner)
@@ -743,8 +745,15 @@ On startup, query the Idea Store for ideas in terminal statuses (`completed`, `a
 Each idea gets its own persistent git repository under the configured workspace root:
 
 - Path: `<workspace_root>/<sanitized_idea_identifier>/`
-- Initialized with `git init` and an empty initial commit.
+- **On approval with GitHub configured**: A GitHub repository is created via the API with the name `<board-slug>-<idea-title-slug>` (max 100 characters). The repo is then cloned to the local workspace path. The `repo_url` and `repo_path` are stored on the idea.
+- **On approval without GitHub**: A local-only repo is initialized with `git init` and an empty initial commit.
+- **Fallback**: If GitHub repo creation fails, the system falls back to local-only repo creation.
 - The repo persists across task runs and retries.
+
+Required environment variables for GitHub repo creation:
+
+- `GITHUB_TOKEN` — Personal access token with `repo` scope.
+- `GITHUB_OWNER` — GitHub username or organization for repo ownership.
 
 ### 9.2 Per-Task Branches
 
