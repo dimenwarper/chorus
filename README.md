@@ -4,6 +4,10 @@
 
 An idea board + coding agent orchestrator. Community members propose project ideas, a board owner curates them, and an orchestrator dispatches coding agents to work on approved ideas — each in its own git repo with per-task branches.
 
+![Chorus board view](chorus_1.png)
+
+![Chorus admin view](chorus_2.png)
+
 ## How It Works
 
 1. **Community submits ideas** — Authenticated users (via GitHub OAuth) propose project ideas on a public board.
