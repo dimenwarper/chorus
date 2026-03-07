@@ -107,7 +107,7 @@ defmodule Chorus.Ideas do
 
   def list_all_ideas(board_id) do
     from(i in Idea,
-      where: i.board_id == ^board_id and i.status not in ["archived"],
+      where: i.board_id == ^board_id and i.status not in ["archived", "rejected"],
       order_by: [
         asc:
           fragment(

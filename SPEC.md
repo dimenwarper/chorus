@@ -466,7 +466,7 @@ Displays a unified admin interface with three tabs:
 
 **Board Tab (Kanban):**
 
-- Scrollable vertical ideas list at the top showing all ideas with identifier, title, status badge, and quick-approve button for pending ideas.
+- Scrollable vertical ideas list at the top showing all non-archived, non-rejected ideas with identifier, title, status badge, and quick-approve button for pending ideas. Rejected ideas are only visible in the Review tab.
 - Kanban columns for task statuses: Backlog (pending), In Progress (running), Done (completed), Failed, Cancelled.
 - Each column shows task cards with: title, parent idea identifier, description preview, branch name, error message (if failed), agent output (collapsible), and timestamp.
 - Columns size to their content (no fixed height), with scrollable card areas (max 60vh).
