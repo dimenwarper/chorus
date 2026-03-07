@@ -192,7 +192,7 @@ defmodule ChorusWeb.BoardLive do
           <div class="mb-8">
             <h1 class="text-4xl font-bold mb-2">{@board.title}</h1>
             <%= if @board.description do %>
-              <p class="text-base-content/70 text-lg">{@board.description}</p>
+              <p class="text-base-content/70 text-lg">{raw(@board.description)}</p>
             <% end %>
             <div class="mt-4 flex gap-2">
               <%= if @current_user do %>
