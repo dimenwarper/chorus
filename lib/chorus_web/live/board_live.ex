@@ -375,7 +375,7 @@ defmodule ChorusWeb.BoardLive do
                             </p>
                           <% end %>
                           <%= if item[:summary] && item[:summary] != "" do %>
-                            <p class="text-xs text-base-content/50 italic truncate">{item.summary}</p>
+                            <p class="text-xs text-base-content/50 italic line-clamp-2">{item.summary}</p>
                           <% end %>
                         <% else %>
                           <p class="text-xs text-base-content/60 truncate">{item.title}</p>
