@@ -365,6 +365,9 @@ defmodule ChorusWeb.BoardLive do
           </div>
         <% end %>
       </div>
+      <footer class="text-center py-6 text-xs text-base-content/30">
+        Powered by <a href="https://github.com/dimenwarper/chorus" target="_blank" class="link link-hover">Chorus</a>
+      </footer>
     </div>
     """
   end
