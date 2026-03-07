@@ -395,6 +395,7 @@ Displays:
 - List of visible ideas grouped or sorted by status and popularity.
 - Each idea shows: identifier, title, status badge, upvote count with vote button, submitter display name, tags, task progress summary (running/done/queued/failed counts), and timestamps.
 - Live activity feed showing real-time agent work (task started, working, completed, failed events).
+- Admin link is only visible to the board owner (determined by admin identity check). Non-admin users do not see the link.
 - Ideas in `rejected` status are hidden by default (configurable).
 - Ideas in `archived` status are never shown.
 
@@ -416,7 +417,7 @@ Displays:
 
 #### 5.1.3 Idea Submission (`POST /api/ideas`)
 
-Requires: Valid OAuth session.
+Requires: Valid OAuth session. Returns HTTP 401 with `{"error": "Sign in to submit ideas"}` if no authenticated session is present.
 
 Request body:
 
