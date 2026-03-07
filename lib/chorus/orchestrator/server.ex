@@ -266,10 +266,13 @@ defmodule Chorus.Orchestrator.Server do
           Phoenix.PubSub.broadcast(Chorus.PubSub, "board:#{state.board_id}", :ideas_updated)
           State.mark_completed(state, task_id, :success)
         else
-          Logger.warning("Task failed: #{runner.task.title} (exit #{exit_code})")
-          Tasks.fail_task(task_id, "exit code #{exit_code}")
+          last_output = runner.output_buffer || runner.last_output || ""
+          error_detail = String.trim(last_output)
+          error_msg = if error_detail != "", do: "exit code #{exit_code}: #{error_detail}", else: "exit code #{exit_code}"
+          Logger.warning("Task failed: #{runner.task.title} — #{error_msg}")
+          Tasks.fail_task(task_id, error_msg)
           broadcast_activity(state, runner, "failed")
-          State.schedule_retry(state, task_id, "exit code #{exit_code}")
+          State.schedule_retry(state, task_id, error_msg)
         end
 
       nil ->
