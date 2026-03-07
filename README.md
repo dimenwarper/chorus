@@ -1,5 +1,7 @@
 # Chorus
 
+> **This is a reference implementation.** The canonical definition of Chorus lives in [`SPEC.md`](SPEC.md), which is implementation-agnostic. If you're building your own version, start from the spec — a from-scratch implementation in your preferred stack is encouraged over forking this repo.
+
 An idea board + coding agent orchestrator. Community members propose project ideas, a board owner curates them, and an orchestrator dispatches coding agents to work on approved ideas — each in its own git repo with per-task branches.
 
 ## How It Works

@@ -795,7 +795,7 @@ For each task dispatch:
 4. Append task-specific instructions (title, description) to the rendered prompt.
 5. Write the prompt to a file in the workspace (`.chorus_prompt.md`).
 6. Launch the agent subprocess with the workspace as cwd.
-7. Capture stdout line-by-line via Erlang port (or equivalent).
+7. Capture stdout line-by-line via subprocess pipe (or equivalent OS facility).
 8. On subprocess exit, handle success/failure.
 
 ### 10.2 Agent Command
@@ -1016,6 +1016,8 @@ Inherits all of Symphony Section 15, plus:
 - **OAuth state validation**: CSRF protection via `state` parameter in OAuth flow.
 - **Admin authentication**: Board owner identity must be validated on all admin endpoints. Implementation may use the same OAuth flow with role checks or a separate admin auth mechanism.
 - **Anonymous upvote abuse**: Fingerprint-based dedup is best-effort. Implementations should monitor for unusual voting patterns and may implement additional protections (CAPTCHA, progressive rate limiting).
+- **Session cookies**: Must be signed and encrypted. In production, cookies must set the `Secure` flag (HTTPS only) and `SameSite=Lax` (to support OAuth redirect flows). Cookies should not be accessible to client-side JavaScript.
+- **Git URL validation**: Repo URLs set by the board owner must be validated to HTTPS only. `file://`, `git://`, and other protocol schemes must be rejected to prevent local filesystem access or unencrypted transport.
 
 ### 15.2 Public Data Considerations
 
