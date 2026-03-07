@@ -426,9 +426,12 @@ Displays the full detail of a single task:
 - Timestamps: created, started, completed.
 - Number of dispatch attempts.
 - Branch name (if assigned).
+- Pull request URL (if a PR was created on completion).
 - Full agent output (scrollable, preserving whitespace/formatting).
 - Error message (if failed).
 - Navigation back to the parent idea.
+
+**Live output streaming:** When the task is in `running` status, the page subscribes to a task-specific real-time channel and displays the agent's stdout/stderr line-by-line as it is produced. The output view should auto-scroll to the latest line. When the task completes or fails, the page refreshes to show the final persisted state.
 
 Task titles in the admin board, activity feed, and anywhere else tasks are listed should link to this detail view.
 
