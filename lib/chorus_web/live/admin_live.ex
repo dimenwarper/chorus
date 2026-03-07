@@ -4,6 +4,7 @@ defmodule ChorusWeb.AdminLive do
   on_mount {ChorusWeb.Plugs.AssignUser, :require_auth}
 
   alias Chorus.{Boards, Ideas, Tasks}
+  alias Chorus.Ideas.Approval
 
   @columns [
     {"pending", "Backlog"},
@@ -68,10 +69,16 @@ defmodule ChorusWeb.AdminLive do
   end
 
   def handle_event("approve", %{"id" => idea_id}, socket) do
-    case Ideas.transition_status(idea_id, "approved") do
-      {:ok, _} ->
-        Phoenix.PubSub.broadcast(Chorus.PubSub, "board:#{socket.assigns.board.id}", :ideas_updated)
-        {:noreply, socket |> reload_all() |> put_flash(:info, "Idea approved")}
+    board = socket.assigns.board
+    config = load_config()
+
+    case Approval.approve(idea_id,
+           workspace_root: config.workspace_root,
+           board_title: board.title) do
+      {:ok, idea} ->
+        Phoenix.PubSub.broadcast(Chorus.PubSub, "board:#{board.id}", :ideas_updated)
+        msg = if idea.repo_url, do: "Idea approved — repo created: #{idea.repo_url}", else: "Idea approved"
+        {:noreply, socket |> reload_all() |> put_flash(:info, msg)}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, "Could not approve idea")}
@@ -152,6 +159,15 @@ defmodule ChorusWeb.AdminLive do
   # ---------------------------------------------------------------------------
   # Helpers
   # ---------------------------------------------------------------------------
+
+  defp load_config do
+    try do
+      status = Chorus.Orchestrator.Server.status()
+      status.config
+    catch
+      :exit, _ -> %Chorus.Workflow.Config{}
+    end
+  end
 
   defp tasks_for_status(tasks_by_status, status) do
     Map.get(tasks_by_status, status, [])

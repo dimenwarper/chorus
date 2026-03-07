@@ -36,6 +36,7 @@ defmodule Chorus.Ideas.Idea do
     field :submitted_by_avatar_url, :string
 
     field :repo_path, :string
+    field :repo_url, :string
 
     belongs_to :board, Chorus.Boards.Board
     has_many :upvotes, Chorus.Ideas.Upvote

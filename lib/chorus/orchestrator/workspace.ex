@@ -81,7 +81,7 @@ defmodule Chorus.Orchestrator.Workspace do
     end
   end
 
-  defp sanitize_key(identifier) do
+  def sanitize_key(identifier) do
     String.replace(identifier, ~r/[^A-Za-z0-9._-]/, "_")
   end
 end

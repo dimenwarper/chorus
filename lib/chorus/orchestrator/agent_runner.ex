@@ -12,8 +12,15 @@ defmodule Chorus.Orchestrator.AgentRunner do
   defstruct [:task, :idea, :repo_path, :branch_name, :port, :started_at, :status, :last_output, :output_buffer]
 
   def start(task, idea, %{config: config, prompt_template: template, board: board}) do
-    # Ensure the idea has a git repo
-    case Workspace.ensure_repo(config.workspace_root, idea) do
+    # Use existing repo_path if set, otherwise ensure one exists
+    repo_result =
+      if idea.repo_path && File.dir?(Path.join(idea.repo_path, ".git")) do
+        {:ok, idea.repo_path}
+      else
+        Workspace.ensure_repo(config.workspace_root, idea)
+      end
+
+    case repo_result do
       {:ok, repo_path} ->
         prompt =
           Prompt.render(template, %{

@@ -31,6 +31,9 @@ config :ueberauth, Ueberauth.Strategy.Github.OAuth,
 # Admin user ID — GitHub user ID of the board owner
 config :chorus, :admin_github_id, System.get_env("ADMIN_GITHUB_ID")
 
+# GitHub owner for repo creation (username or org)
+config :chorus, :github_owner, System.get_env("GITHUB_OWNER")
+
 if config_env() == :prod do
   database_path =
     System.get_env("DATABASE_PATH") ||
