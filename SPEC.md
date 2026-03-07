@@ -836,6 +836,10 @@ For Claude Code, the launch command is:
 cd <workspace_path> && cat .chorus_prompt.md | claude -p --verbose
 ```
 
+### 10.2.1 Agent Permissions
+
+Coding agents running in non-interactive mode (e.g., `claude -p`) may require pre-configured permissions to read, write, and execute commands in the workspace. Since there is no interactive session to approve tool use, the agent's permission settings must be configured on the host before dispatching tasks. Consult the coding agent's documentation for how to grant file and shell access in headless/automated mode.
+
 ### 10.3 Output Handling
 
 - Agent stdout is captured line-by-line and buffered.
