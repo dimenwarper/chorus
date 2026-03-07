@@ -764,11 +764,18 @@ On startup, query the Idea Store for ideas in terminal statuses (`completed`, `a
 
 ### 9.1 Per-Idea Git Repositories
 
-Each idea gets its own persistent git repository under the configured workspace root:
+Each idea gets its own persistent git repository under the configured workspace root.
 
-- Path: `<workspace_root>/<sanitized_idea_identifier>/`
+**Workspace directory naming:**
+
+- **Idea has a `repo_url`** (existing external repo): The workspace directory is named after the repository — the last path segment of the URL, stripped of any trailing `.git` (e.g., `https://github.com/owner/cool-project` → `<workspace_root>/cool-project/`).
+- **Idea has no `repo_url`** (new repo created by the service): The workspace directory is named using a slugified form of the idea title (e.g., "Statistical mechanics of GPUs" → `<workspace_root>/statistical-mechanics-of-gpus/`).
+
+**Repository setup:**
+
 - **On approval with GitHub configured**: A GitHub repository is created via the API with the name `<board-slug>-<idea-title-slug>` (max 100 characters). The repo is then cloned to the local workspace path. The `repo_url` and `repo_path` are stored on the idea.
 - **On approval without GitHub**: A local-only repo is initialized with `git init` and an empty initial commit.
+- **On dispatch with missing workspace**: If a task is dispatched but the workspace directory does not exist, the orchestrator clones from `repo_url` if set, or initializes a fresh local repo. The `repo_path` on the idea is updated accordingly.
 - **Fallback**: If GitHub repo creation fails, the system falls back to local-only repo creation.
 - The repo persists across task runs and retries.
 
