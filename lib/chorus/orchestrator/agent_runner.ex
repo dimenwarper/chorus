@@ -167,7 +167,7 @@ defmodule Chorus.Orchestrator.AgentRunner do
   defp build_command(command, prompt_path, workspace_path) do
     cond do
       String.contains?(command, "claude") ->
-        "cd #{escape(workspace_path)} && cat #{escape(prompt_path)} | #{command} -p --verbose"
+        "cd #{escape(workspace_path)} && cat #{escape(prompt_path)} | #{command} -p --verbose --dangerously-skip-permissions"
 
       true ->
         "cd #{escape(workspace_path)} && #{command} #{escape(prompt_path)}"
