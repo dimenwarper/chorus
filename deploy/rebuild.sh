@@ -13,7 +13,9 @@ MIX_ENV=prod mix assets.deploy
 MIX_ENV=prod mix release --overwrite
 
 echo "==> Migrating..."
+set -a
 source /etc/chorus/env
+set +a
 _build/prod/rel/chorus/bin/chorus eval 'Chorus.Release.migrate()'
 
 echo "==> Restarting..."
