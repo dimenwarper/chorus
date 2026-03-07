@@ -89,33 +89,41 @@ defmodule Chorus.Orchestrator.AgentRunner do
   def stop(runner), do: %{runner | status: :stopped}
 
   defp clone_or_init(idea, workspace_root) do
-    key = Workspace.sanitize_key(idea.identifier)
-    path = Path.join(workspace_root, key) |> Path.expand()
-
     cond do
-      # Already cloned
-      File.dir?(Path.join(path, ".git")) ->
-        persist_repo_path(idea, path)
-        {:ok, path}
-
-      # Has a remote repo_url — clone it
+      # Has a remote repo_url — clone using the repo name as directory
       idea.repo_url && idea.repo_url != "" ->
-        File.mkdir_p!(Path.dirname(path))
+        key = repo_name_from_url(idea.repo_url)
+        path = Path.join(workspace_root, key) |> Path.expand()
 
-        case System.cmd("git", ["clone", idea.repo_url, path], stderr_to_stdout: true) do
-          {_, 0} ->
-            Logger.info("Cloned #{idea.repo_url} to #{path}")
-            persist_repo_path(idea, path)
-            {:ok, path}
+        if File.dir?(Path.join(path, ".git")) do
+          persist_repo_path(idea, path)
+          {:ok, path}
+        else
+          File.mkdir_p!(Path.dirname(path))
 
-          {output, code} ->
-            {:error, "git clone failed (exit #{code}): #{output}"}
+          case System.cmd("git", ["clone", idea.repo_url, path], stderr_to_stdout: true) do
+            {_, 0} ->
+              Logger.info("Cloned #{idea.repo_url} to #{path}")
+              persist_repo_path(idea, path)
+              {:ok, path}
+
+            {output, code} ->
+              {:error, "git clone failed (exit #{code}): #{output}"}
+          end
         end
 
-      # No remote — init a fresh local repo
+      # No remote — init a fresh local repo using idea identifier
       true ->
         Workspace.ensure_repo(workspace_root, idea)
     end
+  end
+
+  defp repo_name_from_url(url) do
+    url
+    |> String.trim_trailing(".git")
+    |> String.split("/")
+    |> List.last()
+    |> Workspace.sanitize_key()
   end
 
   defp persist_repo_path(idea, path) do
