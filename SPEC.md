@@ -396,7 +396,7 @@ Displays:
 - Board title and description (Markdown rendered).
 - List of visible ideas grouped or sorted by status and popularity.
 - Each idea shows: identifier, title, status badge, upvote count with vote button, submitter display name, tags, task progress summary (running/done/queued/failed counts), and timestamps.
-- Live activity feed showing real-time agent work (task started, working, completed, failed events).
+- Live activity feed showing real-time agent work (task started, working, completed, failed events). Task titles in the feed should link to the task detail view. External activity events (e.g., from repository webhooks) should display a summary snippet (first line of commit message, PR body, etc.).
 - Admin link is only visible to the board owner (determined by admin identity check). Non-admin users do not see the link.
 - Only ideas in `approved`, `in_progress`, or `completed` status are shown on the public board. Ideas in `pending`, `rejected`, or `archived` status are not visible to the public.
 - After submitting an idea, the submitter sees an inline confirmation message: "Idea submitted! It will appear on the board once reviewed by the board owner."
@@ -417,7 +417,22 @@ Displays:
 - Tags.
 - If `in_progress` or `completed`: summary of task statuses and agent work activity.
 
-#### 5.1.3 Idea Submission (`POST /api/ideas`)
+#### 5.1.3 Task Detail View (`GET /tasks/:id`)
+
+Displays the full detail of a single task:
+
+- Task title and description.
+- Current status with visual indicator.
+- Timestamps: created, started, completed.
+- Number of dispatch attempts.
+- Branch name (if assigned).
+- Full agent output (scrollable, preserving whitespace/formatting).
+- Error message (if failed).
+- Navigation back to the parent idea.
+
+Task titles in the admin board, activity feed, and anywhere else tasks are listed should link to this detail view.
+
+#### 5.1.4 Idea Submission (`POST /api/ideas`)
 
 Requires: Valid OAuth session. Returns HTTP 401 with `{"error": "Sign in to submit ideas"}` if no authenticated session is present.
 
@@ -435,7 +450,7 @@ Validation:
 
 Response: Created idea object with `status: pending`.
 
-#### 5.1.4 Upvote (`POST /api/ideas/:id/upvote`)
+#### 5.1.5 Upvote (`POST /api/ideas/:id/upvote`)
 
 Accepts both authenticated and anonymous requests (unless `require_oauth_to_upvote` is true).
 
@@ -449,7 +464,7 @@ Behavior:
 - If voter has not upvoted this idea: create upvote, increment count, return `{upvoted: true, count: N}`.
 - If voter has already upvoted: no-op, return `{upvoted: true, count: N}` (idempotent).
 
-#### 5.1.5 Remove Upvote (`DELETE /api/ideas/:id/upvote`)
+#### 5.1.6 Remove Upvote (`DELETE /api/ideas/:id/upvote`)
 
 Same identity resolution as upvote.
 
@@ -956,6 +971,7 @@ Activity event payload:
   idea_title: string,
   branch: string,
   last_output: string | null,
+  summary: string | null,
   timestamp: datetime
 }
 ```
