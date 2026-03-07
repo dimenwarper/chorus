@@ -15,7 +15,19 @@ defmodule ChorusWeb.Plugs.AssignUser do
         {:halt, socket |> put_flash(:error, "You must sign in") |> redirect(to: "/")}
 
       user ->
-        {:cont, assign(socket, current_user: user)}
+        if admin?(user) do
+          {:cont, assign(socket, current_user: user)}
+        else
+          {:halt, socket |> put_flash(:error, "You are not authorized") |> redirect(to: "/")}
+        end
+    end
+  end
+
+  defp admin?(user) do
+    case Application.get_env(:chorus, :admin_github_id) do
+      nil -> true
+      "" -> true
+      admin_id -> user["id"] == admin_id
     end
   end
 end

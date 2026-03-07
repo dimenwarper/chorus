@@ -18,6 +18,10 @@ defmodule ChorusWeb.Router do
     plug ChorusWeb.Plugs.RequireAuth
   end
 
+  pipeline :require_admin do
+    plug ChorusWeb.Plugs.RequireAuth, admin: true
+  end
+
   pipeline :api do
     plug :accepts, ["json"]
     plug :fetch_session
@@ -40,9 +44,9 @@ defmodule ChorusWeb.Router do
     live "/ideas/:identifier", IdeaLive
   end
 
-  # Admin UI (requires auth)
+  # Admin UI (requires admin)
   scope "/admin", ChorusWeb do
-    pipe_through [:browser, :dev_auth, :require_auth]
+    pipe_through [:browser, :dev_auth, :require_admin]
 
     live "/", AdminLive
   end
@@ -58,9 +62,9 @@ defmodule ChorusWeb.Router do
     delete "/ideas/:id/upvote", IdeaController, :remove_upvote
   end
 
-  # Admin JSON API (requires auth)
+  # Admin JSON API (requires admin)
   scope "/api/admin", ChorusWeb.Api do
-    pipe_through [:api, :dev_auth, :require_auth]
+    pipe_through [:api, :dev_auth, :require_admin]
 
     get "/review", AdminController, :review_queue
     post "/review/batch", AdminController, :batch_review

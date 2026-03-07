@@ -15,8 +15,13 @@ defmodule ChorusWeb.Api.IdeaController do
   end
 
   def create(conn, %{"title" => _} = params) do
-    board = Boards.get_default_board()
     user = get_session(conn, "current_user")
+
+    if is_nil(user) do
+      conn |> put_status(:unauthorized) |> json(%{error: "Sign in to submit ideas"}) |> halt()
+    end
+
+    board = Boards.get_default_board()
 
     attrs = %{
       title: params["title"],
