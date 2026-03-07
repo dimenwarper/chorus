@@ -72,7 +72,7 @@ defmodule Chorus.Ideas.Approval do
   end
 
   defp clone_repo(clone_url, workspace_root, idea) do
-    key = Workspace.sanitize_key(idea.identifier)
+    key = Workspace.workspace_key(idea)
     path = Path.join(workspace_root, key) |> Path.expand()
     abs_root = Path.expand(workspace_root)
 

@@ -11,7 +11,7 @@ defmodule Chorus.Orchestrator.WorkspaceTest do
   end
 
   test "ensure_repo creates a git repo", %{root: root} do
-    idea = %{identifier: "IDEA-001"}
+    idea = %{identifier: "IDEA-001", title: "Test Idea One"}
     {:ok, path} = Workspace.ensure_repo(root, idea)
 
     assert File.dir?(path)
@@ -19,7 +19,7 @@ defmodule Chorus.Orchestrator.WorkspaceTest do
   end
 
   test "ensure_repo is idempotent", %{root: root} do
-    idea = %{identifier: "IDEA-001"}
+    idea = %{identifier: "IDEA-001", title: "Test Idea One"}
     {:ok, path1} = Workspace.ensure_repo(root, idea)
     {:ok, path2} = Workspace.ensure_repo(root, idea)
 
@@ -27,7 +27,7 @@ defmodule Chorus.Orchestrator.WorkspaceTest do
   end
 
   test "create_branch creates a git branch", %{root: root} do
-    idea = %{identifier: "IDEA-002"}
+    idea = %{identifier: "IDEA-002", title: "Test Idea Two"}
     {:ok, path} = Workspace.ensure_repo(root, idea)
 
     assert :ok = Workspace.create_branch(path, "task/test-branch")
@@ -37,7 +37,7 @@ defmodule Chorus.Orchestrator.WorkspaceTest do
   end
 
   test "return_to_main switches back", %{root: root} do
-    idea = %{identifier: "IDEA-003"}
+    idea = %{identifier: "IDEA-003", title: "Test Idea Three"}
     {:ok, path} = Workspace.ensure_repo(root, idea)
 
     Workspace.create_branch(path, "task/feature")
@@ -48,7 +48,7 @@ defmodule Chorus.Orchestrator.WorkspaceTest do
   end
 
   test "clean removes workspace", %{root: root} do
-    idea = %{identifier: "IDEA-004"}
+    idea = %{identifier: "IDEA-004", title: "Test Idea Four"}
     {:ok, path} = Workspace.ensure_repo(root, idea)
     assert File.dir?(path)
 

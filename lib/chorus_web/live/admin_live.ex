@@ -165,7 +165,7 @@ defmodule ChorusWeb.AdminLive do
             with {:ok, idea} <- Ideas.transition_status(idea.id, "approved"),
                  {:ok, _idea} <- Ideas.update_idea(idea.id, %{repo_url: repo_url}) do
               workspace_root = config.workspace_root
-              repo_path = Path.join(workspace_root, Chorus.Orchestrator.Workspace.sanitize_key(idea.title))
+              repo_path = Path.join(workspace_root, Chorus.Orchestrator.Workspace.slugify(idea.title))
               clone_if_needed(repo_url, repo_path)
               Ideas.update_idea(idea.id, %{repo_path: repo_path})
             end
@@ -194,7 +194,7 @@ defmodule ChorusWeb.AdminLive do
       true ->
         config = load_config()
         idea = Ideas.get_idea!(idea_id)
-        repo_path = Path.join(config.workspace_root, Chorus.Orchestrator.Workspace.sanitize_key(idea.title))
+        repo_path = Path.join(config.workspace_root, Chorus.Orchestrator.Workspace.slugify(idea.title))
         clone_if_needed(repo_url, repo_path)
 
         case Ideas.update_idea(idea_id, %{repo_url: repo_url, repo_path: repo_path}) do

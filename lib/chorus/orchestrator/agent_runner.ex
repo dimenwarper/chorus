@@ -90,9 +90,9 @@ defmodule Chorus.Orchestrator.AgentRunner do
 
   defp clone_or_init(idea, workspace_root) do
     cond do
-      # Has a remote repo_url — clone using the repo name as directory
+      # Has a remote repo_url — clone using the slugified idea title as directory
       idea.repo_url && idea.repo_url != "" ->
-        key = repo_name_from_url(idea.repo_url)
+        key = Workspace.workspace_key(idea)
         path = Path.join(workspace_root, key) |> Path.expand()
 
         if File.dir?(Path.join(path, ".git")) do
@@ -116,14 +116,6 @@ defmodule Chorus.Orchestrator.AgentRunner do
       true ->
         Workspace.ensure_repo(workspace_root, idea)
     end
-  end
-
-  defp repo_name_from_url(url) do
-    url
-    |> String.trim_trailing(".git")
-    |> String.split("/")
-    |> List.last()
-    |> Workspace.sanitize_key()
   end
 
   defp persist_repo_path(idea, path) do

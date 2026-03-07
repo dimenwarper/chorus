@@ -7,7 +7,7 @@ defmodule Chorus.Orchestrator.Workspace do
   require Logger
 
   def ensure_repo(root, idea) do
-    key = sanitize_key(idea.identifier)
+    key = workspace_key(idea)
     path = Path.join(root, key) |> Path.expand()
     abs_root = Path.expand(root)
 
@@ -57,7 +57,7 @@ defmodule Chorus.Orchestrator.Workspace do
   end
 
   def clean(root, idea) do
-    key = sanitize_key(idea.identifier)
+    key = workspace_key(idea)
     path = Path.join(root, key) |> Path.expand()
     abs_root = Path.expand(root)
 
@@ -79,6 +79,18 @@ defmodule Chorus.Orchestrator.Workspace do
     else
       :noop
     end
+  end
+
+  def workspace_key(idea) do
+    slugify(idea.title)
+  end
+
+  def slugify(text) do
+    text
+    |> String.downcase()
+    |> String.replace(~r/[^a-z0-9]+/, "-")
+    |> String.trim("-")
+    |> String.slice(0, 80)
   end
 
   def sanitize_key(identifier) do
