@@ -1,12 +1,16 @@
 # Chorus
 
-> **This is a reference implementation.** The canonical definition of Chorus lives in [`SPEC.md`](SPEC.md), which is implementation-agnostic. If you're building your own version, start from the spec — a from-scratch implementation in your preferred stack is encouraged over forking this repo.
+Inspired by OpenAI's [symphony](https://github.com/openai/symphony/tree/main), Chorus is an idea board + coding agent orchestrator with a splash of social. Community members propose project ideas, a board owner curates them, and an orchestrator dispatches coding agents to work on approved ideas. Each idea gets its own git repo with per-task branches. Off-chorus activity in also tracked in a live tracker. A sample implementation that I'm using personally lives in [https://verisleta.cloud/](https://verisleta.cloud/):
 
-An idea board + coding agent orchestrator. Community members propose project ideas, a board owner curates them, and an orchestrator dispatches coding agents to work on approved ideas — each in its own git repo with per-task branches.
+Main page:
 
 ![Chorus board view](chorus_1.png)
 
+Admin view (only the owner can dispatch stuff)
+
 ![Chorus admin view](chorus_2.png)
+
+> **This is a reference implementation.** The canonical definition of Chorus lives in [`SPEC.md`](SPEC.md), which is implementation-agnostic. If you're building your own version, start from the spec — a from-scratch implementation in your preferred stack is encouraged over forking this repo.
 
 ## How It Works
 
