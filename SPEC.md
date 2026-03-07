@@ -396,12 +396,12 @@ Displays:
 - Each idea shows: identifier, title, status badge, upvote count with vote button, submitter display name, tags, task progress summary (running/done/queued/failed counts), and timestamps.
 - Live activity feed showing real-time agent work (task started, working, completed, failed events).
 - Admin link is only visible to the board owner (determined by admin identity check). Non-admin users do not see the link.
-- Ideas in `rejected` status are hidden by default (configurable).
-- Ideas in `archived` status are never shown.
+- Only ideas in `approved`, `in_progress`, or `completed` status are shown on the public board. Ideas in `pending`, `rejected`, or `archived` status are not visible to the public.
+- After submitting an idea, the submitter sees an inline confirmation message: "Idea submitted! It will appear on the board once reviewed by the board owner."
 
 Default sort order for visible ideas:
 
-1. Status group priority: `in_progress` first, then `approved`, then `completed`, then `pending`.
+1. Status group priority: `in_progress` first, then `approved`, then `completed`.
 2. Within each group: upvote count descending, then `created_at` oldest first.
 
 #### 5.1.2 Idea Detail View (`GET /ideas/:identifier`)

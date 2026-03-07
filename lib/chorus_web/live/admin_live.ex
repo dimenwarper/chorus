@@ -35,7 +35,7 @@ defmodule ChorusWeb.AdminLive do
   defp reload_all(socket) do
     board = socket.assigns.board
 
-    all_ideas = Ideas.list_visible_ideas(board.id)
+    all_ideas = Ideas.list_all_ideas(board.id)
 
     socket
     |> assign(
@@ -281,7 +281,7 @@ defmodule ChorusWeb.AdminLive do
                             <div class="flex-1 min-w-0">
                               <p class="font-medium text-sm leading-tight">{task.title}</p>
                               <%= if task.idea do %>
-                                <span class="font-mono text-xs text-base-content/40">{task.idea.identifier}</span>
+                                <span class="text-xs text-base-content/40">{task.idea.title}</span>
                               <% end %>
                             </div>
                             <%= if status in ["pending", "failed"] do %>

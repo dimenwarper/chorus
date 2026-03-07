@@ -10,7 +10,7 @@ defmodule ChorusWeb.BoardLive do
     board = Boards.get_default_board()
 
     if is_nil(board) do
-      {:ok, socket |> put_flash(:error, "No board configured. Run: mix run priv/repo/seeds.exs") |> assign(board: nil, ideas: [], activity: [], show_submit: false, is_admin: false)}
+      {:ok, socket |> put_flash(:error, "No board configured. Run: mix run priv/repo/seeds.exs") |> assign(board: nil, ideas: [], activity: [], show_submit: false, submitted_message: false, is_admin: false)}
     else
       if connected?(socket) do
         Phoenix.PubSub.subscribe(Chorus.PubSub, "board:#{board.id}")
@@ -41,6 +41,7 @@ defmodule ChorusWeb.BoardLive do
          voter_identity: voter_id,
          upvoted_ids: upvoted_ids,
          show_submit: false,
+         submitted_message: false,
          activity: Tasks.recent_activity(15),
          form: to_form(%{"title" => "", "description" => "", "tags" => ""})
        )}
@@ -48,6 +49,10 @@ defmodule ChorusWeb.BoardLive do
   end
 
   @impl true
+  def handle_event("dismiss_submitted", _, socket) do
+    {:noreply, assign(socket, submitted_message: false)}
+  end
+
   def handle_event("toggle_submit", _, socket) do
     {:noreply, assign(socket, show_submit: !socket.assigns.show_submit)}
   end
@@ -77,8 +82,7 @@ defmodule ChorusWeb.BoardLive do
           {:noreply,
            socket
            |> reload_ideas()
-           |> assign(show_submit: false, form: to_form(%{"title" => "", "description" => "", "tags" => ""}))
-           |> put_flash(:info, "Idea submitted!")}
+           |> assign(show_submit: false, submitted_message: true, form: to_form(%{"title" => "", "description" => "", "tags" => ""}))}
 
         {:error, changeset} ->
           errors = Chorus.Helpers.changeset_errors(changeset)
@@ -239,6 +243,14 @@ defmodule ChorusWeb.BoardLive do
             </div>
           <% end %>
 
+          <%= if @submitted_message do %>
+            <div class="alert alert-info mb-6 shadow-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>
+              <span>Idea submitted! It will appear on the board once reviewed by the board owner.</span>
+              <button phx-click="dismiss_submitted" class="btn btn-ghost btn-xs">Dismiss</button>
+            </div>
+          <% end %>
+
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <%!-- Ideas list --%>
             <div class="lg:col-span-2 space-y-3">
@@ -321,11 +333,11 @@ defmodule ChorusWeb.BoardLive do
                         <div class="flex items-center gap-2">
                           <%= if is_map(item) && Map.has_key?(item, :event) do %>
                             <span class={"badge badge-xs #{event_badge_class(item.event)}"}>{item.event}</span>
-                            <span class="text-sm font-medium truncate">{item.idea_identifier}</span>
+                            <span class="text-sm font-medium truncate">{item.idea_title || item.idea_identifier}</span>
                             <span class="text-xs text-base-content/40 ml-auto">{format_time(item)}</span>
                           <% else %>
                             <span class={"badge badge-xs #{status_badge_class(item.status)}"}>{item.status}</span>
-                            <span class="text-sm font-medium truncate">{item.idea && item.idea.identifier}</span>
+                            <span class="text-sm font-medium truncate">{item.idea && (item.idea.title || item.idea.identifier)}</span>
                             <span class="text-xs text-base-content/40 ml-auto">
                               {Calendar.strftime(item.updated_at, "%H:%M:%S")}
                             </span>

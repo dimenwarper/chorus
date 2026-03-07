@@ -91,11 +91,27 @@ defmodule Chorus.Ideas do
 
   def list_visible_ideas(board_id) do
     from(i in Idea,
+      where: i.board_id == ^board_id and i.status in ["approved", "in_progress", "completed"],
+      order_by: [
+        asc:
+          fragment(
+            "CASE ? WHEN 'in_progress' THEN 0 WHEN 'approved' THEN 1 WHEN 'completed' THEN 2 ELSE 3 END",
+            i.status
+          ),
+        desc: i.upvote_count,
+        asc: i.inserted_at
+      ]
+    )
+    |> Repo.all()
+  end
+
+  def list_all_ideas(board_id) do
+    from(i in Idea,
       where: i.board_id == ^board_id and i.status not in ["archived"],
       order_by: [
         asc:
           fragment(
-            "CASE ? WHEN 'in_progress' THEN 0 WHEN 'approved' THEN 1 WHEN 'completed' THEN 2 WHEN 'pending' THEN 3 WHEN 'rejected' THEN 4 ELSE 5 END",
+            "CASE ? WHEN 'in_progress' THEN 0 WHEN 'approved' THEN 1 WHEN 'pending' THEN 2 WHEN 'completed' THEN 3 WHEN 'rejected' THEN 4 ELSE 5 END",
             i.status
           ),
         desc: i.upvote_count,
