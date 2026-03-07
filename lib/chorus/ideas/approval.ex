@@ -29,6 +29,9 @@ defmodule Chorus.Ideas.Approval do
 
       case GitHub.create_repo(repo_name, description: String.slice(description, 0, 350)) do
         {:ok, repo_info} ->
+          # Register webhook for activity feed
+          if repo_info[:full_name], do: GitHub.register_webhook(repo_info.full_name)
+
           # Clone to workspace
           case clone_repo(repo_info.clone_url, workspace_root, idea) do
             {:ok, local_path} ->

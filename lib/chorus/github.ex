@@ -64,6 +64,49 @@ defmodule Chorus.GitHub do
     end
   end
 
+  def register_webhook(repo_full_name) do
+    webhook_url = webhook_url()
+    secret = System.get_env("GITHUB_WEBHOOK_SECRET")
+
+    if webhook_url do
+      body = Jason.encode!(%{
+        name: "web",
+        active: true,
+        events: ["push", "pull_request", "issues", "issue_comment"],
+        config: %{
+          url: webhook_url,
+          content_type: "json",
+          secret: secret || "",
+          insecure_ssl: "0"
+        }
+      })
+
+      case Req.post(api_url("/repos/#{repo_full_name}/hooks"),
+        body: body,
+        headers: headers()
+      ) do
+        {:ok, %{status: 201}} ->
+          Logger.info("Webhook registered for #{repo_full_name}")
+          :ok
+
+        {:ok, %{status: 422}} ->
+          Logger.info("Webhook already exists for #{repo_full_name}")
+          :ok
+
+        {:ok, %{status: status, body: body}} ->
+          Logger.warning("Failed to register webhook for #{repo_full_name}: #{status} #{inspect(body)}")
+          {:error, "webhook registration failed: #{status}"}
+
+        {:error, reason} ->
+          Logger.warning("Failed to register webhook for #{repo_full_name}: #{inspect(reason)}")
+          {:error, reason}
+      end
+    else
+      Logger.debug("No PHX_HOST configured, skipping webhook registration")
+      :ok
+    end
+  end
+
   def configured? do
     token() not in [nil, ""]
   end
@@ -78,6 +121,14 @@ defmodule Chorus.GitHub do
 
   defp api_url(path) do
     "https://api.github.com" <> path
+  end
+
+  defp webhook_url do
+    case System.get_env("PHX_HOST") do
+      nil -> nil
+      "" -> nil
+      host -> "https://#{host}/api/webhooks/github"
+    end
   end
 
   defp headers do

@@ -51,6 +51,13 @@ defmodule ChorusWeb.Router do
     live "/", AdminLive
   end
 
+  # Webhooks (no session/auth needed)
+  scope "/api/webhooks", ChorusWeb do
+    pipe_through [:api]
+
+    post "/github", WebhookController, :github
+  end
+
   # Public JSON API
   scope "/api", ChorusWeb.Api do
     pipe_through [:api, :dev_auth]

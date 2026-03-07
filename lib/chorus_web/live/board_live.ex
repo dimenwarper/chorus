@@ -175,7 +175,21 @@ defmodule ChorusWeb.BoardLive do
       "completed" -> "badge-success"
       "failed" -> "badge-error"
       "stalled" -> "badge-warning"
+      "github_pull_request" -> "badge-accent"
+      "github_push" -> "badge-neutral"
+      "github_issue" -> "badge-secondary"
+      "github_comment" -> "badge-ghost"
       _ -> "badge-ghost"
+    end
+  end
+
+  defp event_display_name(event) do
+    case event do
+      "github_pull_request" -> "PR"
+      "github_push" -> "push"
+      "github_issue" -> "issue"
+      "github_comment" -> "comment"
+      other -> other
     end
   end
 
@@ -338,7 +352,7 @@ defmodule ChorusWeb.BoardLive do
                       <div class="card-body py-2 px-3">
                         <div class="flex items-center gap-2">
                           <%= if is_map(item) && Map.has_key?(item, :event) do %>
-                            <span class={"badge badge-xs #{event_badge_class(item.event)}"}>{item.event}</span>
+                            <span class={"badge badge-xs #{event_badge_class(item.event)}"}>{event_display_name(item.event)}</span>
                             <span class="text-sm font-medium truncate">{item.idea_title || item.idea_identifier}</span>
                             <span class="text-xs text-base-content/40 ml-auto">{format_time(item)}</span>
                           <% else %>
@@ -351,8 +365,14 @@ defmodule ChorusWeb.BoardLive do
                         </div>
                         <%= if is_map(item) && Map.has_key?(item, :event) do %>
                           <p class="text-xs text-base-content/60 truncate">{item.task_title}</p>
-                          <%= if item.last_output && item.event != "working" do %>
-                            <p class="text-xs font-mono text-base-content/40 truncate">{item.last_output}</p>
+                          <%= if item.last_output && item.event not in ["working"] do %>
+                            <p class="text-xs font-mono text-base-content/40 truncate">
+                              <%= if String.starts_with?(item.event, "github_") do %>
+                                by {item.last_output}
+                              <% else %>
+                                {item.last_output}
+                              <% end %>
+                            </p>
                           <% end %>
                         <% else %>
                           <p class="text-xs text-base-content/60 truncate">{item.title}</p>
