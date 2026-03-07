@@ -107,6 +107,35 @@ defmodule Chorus.GitHub do
     end
   end
 
+  def create_pull_request(repo_full_name, branch, title, body \\ "") do
+    payload = Jason.encode!(%{
+      title: title,
+      head: branch,
+      base: "main",
+      body: body
+    })
+
+    case Req.post(api_url("/repos/#{repo_full_name}/pulls"),
+      body: payload,
+      headers: headers()
+    ) do
+      {:ok, %{status: 201, body: resp}} ->
+        {:ok, resp["html_url"]}
+
+      {:ok, %{status: 422, body: %{"errors" => errors}}} ->
+        # Could be "no commits between base and head" or PR already exists
+        Logger.warning("PR creation returned 422 for #{repo_full_name}: #{inspect(errors)}")
+        {:error, "PR creation failed: #{inspect(errors)}"}
+
+      {:ok, %{status: status, body: body}} ->
+        Logger.warning("PR creation failed for #{repo_full_name}: #{status}")
+        {:error, "GitHub API returned #{status}: #{inspect(body)}"}
+
+      {:error, reason} ->
+        {:error, "GitHub API request failed: #{inspect(reason)}"}
+    end
+  end
+
   def configured? do
     token() not in [nil, ""]
   end

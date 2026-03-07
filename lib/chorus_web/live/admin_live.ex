@@ -396,6 +396,9 @@ defmodule ChorusWeb.AdminLive do
                           <%= if task.branch_name do %>
                             <p class="font-mono text-[10px] text-base-content/30 mt-1 truncate">{task.branch_name}</p>
                           <% end %>
+                          <%= if task.pr_url do %>
+                            <a href={task.pr_url} target="_blank" class="text-[10px] link link-primary mt-0.5 truncate block">PR &rarr;</a>
+                          <% end %>
                           <%= if task.error do %>
                             <p class="text-xs text-error mt-1 truncate" title={task.error}>{task.error}</p>
                           <% end %>

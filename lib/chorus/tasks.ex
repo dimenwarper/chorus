@@ -32,11 +32,11 @@ defmodule Chorus.Tasks do
     |> Repo.update()
   end
 
-  def complete_task(task_id, output) do
+  def complete_task(task_id, output, opts \\ []) do
     task = get_task!(task_id)
 
     task
-    |> Task.complete_changeset(output)
+    |> Task.complete_changeset(output, opts)
     |> Repo.update()
   end
 

@@ -13,6 +13,7 @@ defmodule Chorus.Tasks.Task do
     field :status, :string, default: "pending"
     field :branch_name, :string
     field :agent_output, :string
+    field :pr_url, :string
     field :error, :string
     field :attempt, :integer, default: 0
     field :started_at, :utc_datetime
@@ -41,11 +42,15 @@ defmodule Chorus.Tasks.Task do
     |> change(status: "running", started_at: now, branch_name: branch, attempt: (task.attempt || 0) + 1)
   end
 
-  def complete_changeset(task, output) do
+  def complete_changeset(task, output, opts \\ []) do
     now = DateTime.utc_now() |> DateTime.truncate(:second)
+    pr_url = Keyword.get(opts, :pr_url)
+
+    changes = %{status: "completed", completed_at: now, agent_output: output}
+    changes = if pr_url, do: Map.put(changes, :pr_url, pr_url), else: changes
 
     task
-    |> change(status: "completed", completed_at: now, agent_output: output)
+    |> change(changes)
   end
 
   def fail_changeset(task, error) do

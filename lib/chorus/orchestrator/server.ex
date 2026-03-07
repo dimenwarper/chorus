@@ -7,7 +7,7 @@ defmodule Chorus.Orchestrator.Server do
   use GenServer
   require Logger
 
-  alias Chorus.{Ideas, Boards, Tasks}
+  alias Chorus.{Ideas, Boards, Tasks, GitHub}
   alias Chorus.Orchestrator.{State, AgentRunner, Workspace}
   alias Chorus.Workflow.{Loader, Config}
 
@@ -260,7 +260,8 @@ defmodule Chorus.Orchestrator.Server do
         if exit_code == 0 do
           Logger.info("Task completed successfully: #{runner.task.title}")
           output = runner.output_buffer || runner.last_output || ""
-          Tasks.complete_task(task_id, output)
+          pr_url = push_and_create_pr(runner)
+          Tasks.complete_task(task_id, output, pr_url: pr_url)
           broadcast_activity(state, runner, "completed")
           Phoenix.PubSub.broadcast(Chorus.PubSub, "board:#{state.board_id}", :ideas_updated)
           State.mark_completed(state, task_id, :success)
@@ -305,6 +306,47 @@ defmodule Chorus.Orchestrator.Server do
   # ---------------------------------------------------------------------------
   # Helpers
   # ---------------------------------------------------------------------------
+
+  defp push_and_create_pr(runner) do
+    repo_path = runner.repo_path
+    branch = runner.branch_name
+    idea = runner.idea
+    task = runner.task
+
+    # Extract owner/repo from repo_url (e.g. "https://github.com/owner/repo")
+    repo_full_name =
+      case idea.repo_url do
+        "https://github.com/" <> rest -> rest |> String.trim_trailing(".git")
+        _ -> nil
+      end
+
+    if repo_full_name && GitHub.configured?() do
+      # Push the branch
+      case System.cmd("git", ["push", "origin", branch], cd: repo_path, stderr_to_stdout: true) do
+        {_, 0} ->
+          Logger.info("Pushed branch #{branch} for task #{task.id}")
+
+          pr_title = "[Chorus] #{task.title}"
+          pr_body = "Automated PR from Chorus task.\n\n**Idea:** #{idea.title}\n**Task:** #{task.title}\n#{if task.description, do: "\n#{task.description}", else: ""}"
+
+          case GitHub.create_pull_request(repo_full_name, branch, pr_title, pr_body) do
+            {:ok, url} ->
+              Logger.info("Created PR for task #{task.id}: #{url}")
+              url
+
+            {:error, reason} ->
+              Logger.warning("Failed to create PR for task #{task.id}: #{reason}")
+              nil
+          end
+
+        {output, code} ->
+          Logger.warning("Failed to push branch #{branch} (exit #{code}): #{output}")
+          nil
+      end
+    else
+      nil
+    end
+  end
 
   defp schedule_tick(interval_ms) do
     Process.send_after(self(), :tick, interval_ms)

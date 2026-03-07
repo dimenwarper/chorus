@@ -75,6 +75,12 @@ defmodule ChorusWeb.TaskLive do
                   <p class="font-mono text-sm">{@task.branch_name}</p>
                 </div>
               <% end %>
+              <%= if @task.pr_url do %>
+                <div class="col-span-2">
+                  <span class="text-base-content/40">Pull Request</span>
+                  <p><a href={@task.pr_url} target="_blank" class="link link-primary">{@task.pr_url}</a></p>
+                </div>
+              <% end %>
             </div>
 
             <%= if @task.error do %>
