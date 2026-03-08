@@ -113,6 +113,10 @@ defmodule ChorusWeb.WebhookController do
     Phoenix.PubSub.broadcast(Chorus.PubSub, "activity:feed", {:activity, activity})
 
     if idea do
+      if idea.status == "approved" do
+        Chorus.Ideas.transition_status(idea.id, "in_progress")
+      end
+
       Phoenix.PubSub.broadcast(Chorus.PubSub, "board:#{idea.board_id}", :ideas_updated)
     end
   end
