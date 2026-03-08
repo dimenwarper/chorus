@@ -130,7 +130,10 @@ defmodule ChorusWeb.BoardLive do
   defp load_task_summaries(ideas) do
     Enum.map(ideas, fn idea ->
       counts = Tasks.count_by_status(idea.id)
-      Map.put(idea, :task_summary, counts)
+      activity_count = Tasks.count_activity_events(idea.id)
+      idea
+      |> Map.put(:task_summary, counts)
+      |> Map.put(:activity_count, activity_count)
     end)
   end
 
@@ -313,8 +316,8 @@ defmodule ChorusWeb.BoardLive do
                             <span class="badge badge-ghost badge-xs">{tag}</span>
                           <% end %>
                         </div>
-                        <%!-- Task progress --%>
-                        <%= if map_size(idea.task_summary) > 0 do %>
+                        <%!-- Task progress & activity --%>
+                        <%= if map_size(idea.task_summary) > 0 || idea.activity_count > 0 do %>
                           <div class="flex items-center gap-2 mt-2 text-xs">
                             <%= if idea.task_summary["running"] do %>
                               <span class="badge badge-primary badge-xs">{idea.task_summary["running"]} running</span>
@@ -327,6 +330,9 @@ defmodule ChorusWeb.BoardLive do
                             <% end %>
                             <%= if idea.task_summary["failed"] do %>
                               <span class="badge badge-error badge-xs">{idea.task_summary["failed"]} failed</span>
+                            <% end %>
+                            <%= if idea.activity_count > 0 do %>
+                              <span class="badge badge-neutral badge-xs">{idea.activity_count} activity</span>
                             <% end %>
                           </div>
                         <% end %>

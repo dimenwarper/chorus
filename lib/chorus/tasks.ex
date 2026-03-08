@@ -74,6 +74,14 @@ defmodule Chorus.Tasks do
     |> Repo.all()
   end
 
+  def count_activity_events(idea_id) do
+    from(e in Chorus.ActivityEvent,
+      where: e.idea_id == ^idea_id,
+      select: count(e.id)
+    )
+    |> Repo.one()
+  end
+
   def count_by_status(idea_id) do
     from(t in Task,
       where: t.idea_id == ^idea_id,
