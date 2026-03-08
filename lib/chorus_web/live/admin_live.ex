@@ -181,6 +181,39 @@ defmodule ChorusWeb.AdminLive do
     end
   end
 
+  def handle_event("update_idea_details", %{"idea_id" => idea_id, "title" => title, "description" => desc, "repo_url" => repo_url}, socket) do
+    updates = %{title: title, description: if(desc == "", do: nil, else: desc)}
+
+    # Handle repo_url change
+    repo_updates =
+      cond do
+        repo_url == "" ->
+          %{repo_url: nil, repo_path: nil}
+
+        not valid_git_url?(repo_url) ->
+          {:noreply, put_flash(socket, :error, "Invalid repo URL — must use HTTPS")}
+
+        true ->
+          config = load_config()
+          repo_name = repo_url |> String.trim_trailing("/") |> String.trim_trailing(".git") |> String.split("/") |> List.last()
+          repo_path = Path.join(config.workspace_root, repo_name)
+          clone_if_needed(repo_url, repo_path)
+          %{repo_url: repo_url, repo_path: repo_path}
+      end
+
+    case repo_updates do
+      {:noreply, _} = early_return -> early_return
+      repo_map ->
+        case Ideas.update_idea(idea_id, Map.merge(updates, repo_map)) do
+          {:ok, _} ->
+            Phoenix.PubSub.broadcast(Chorus.PubSub, "board:#{socket.assigns.board.id}", :ideas_updated)
+            {:noreply, socket |> reload_all() |> put_flash(:info, "Idea updated")}
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, "Could not update idea")}
+        end
+    end
+  end
+
   def handle_event("update_idea_repo", %{"idea_id" => idea_id, "repo_url" => repo_url}, socket) do
     cond do
       repo_url == "" ->
@@ -521,39 +554,29 @@ defmodule ChorusWeb.AdminLive do
               </div>
 
               <%!-- Ideas table --%>
-              <div class="card bg-base-100 shadow-sm overflow-x-auto">
-                <table class="table table-sm">
-                  <thead>
-                    <tr>
-                      <th class="w-24">ID</th>
-                      <th>Title</th>
-                      <th class="w-28">Status</th>
-                      <th>Repo URL</th>
-                      <th class="w-20"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <%= for idea <- @all_ideas do %>
-                      <tr>
-                        <td class="font-mono text-xs text-base-content/50">{idea.identifier}</td>
-                        <td class="text-sm">{idea.title}</td>
-                        <td><span class={"badge badge-xs #{idea_status_badge(idea.status)}"}>{idea.status |> String.replace("_", " ")}</span></td>
-                        <td>
-                          <.form for={%{}} phx-submit="update_idea_repo" class="flex items-center gap-1">
-                            <input type="hidden" name="idea_id" value={idea.id} />
-                            <input type="text" name="repo_url" value={idea.repo_url || ""} class="input input-bordered input-xs flex-1 font-mono text-xs" placeholder="No repo" />
-                            <button type="submit" class="btn btn-ghost btn-xs px-1" title="Save">&#10003;</button>
-                          </.form>
-                        </td>
-                        <td>
+              <div class="space-y-3">
+                <%= for idea <- @all_ideas do %>
+                  <div class="card bg-base-100 shadow-sm">
+                    <div class="card-body py-3 px-4">
+                      <.form for={%{}} phx-submit="update_idea_details" class="space-y-2">
+                        <input type="hidden" name="idea_id" value={idea.id} />
+                        <div class="flex items-center gap-2">
+                          <span class="font-mono text-xs text-base-content/40">{idea.identifier}</span>
+                          <span class={"badge badge-xs #{idea_status_badge(idea.status)}"}>{idea.status |> String.replace("_", " ")}</span>
                           <%= if idea.repo_url do %>
-                            <a href={idea.repo_url} target="_blank" class="btn btn-ghost btn-xs px-1" title="Open repo">&#x2197;</a>
+                            <a href={idea.repo_url} target="_blank" class="text-xs link link-primary ml-auto">repo &rarr;</a>
                           <% end %>
-                        </td>
-                      </tr>
-                    <% end %>
-                  </tbody>
-                </table>
+                        </div>
+                        <input type="text" name="title" value={idea.title} class="input input-bordered input-sm w-full font-semibold" />
+                        <textarea name="description" class="textarea textarea-bordered textarea-sm w-full text-xs" rows="2" placeholder="Description">{idea.description || ""}</textarea>
+                        <div class="flex items-center gap-1">
+                          <input type="text" name="repo_url" value={idea.repo_url || ""} class="input input-bordered input-xs flex-1 font-mono text-xs" placeholder="Repo URL" />
+                          <button type="submit" class="btn btn-primary btn-xs">Save</button>
+                        </div>
+                      </.form>
+                    </div>
+                  </div>
+                <% end %>
               </div>
             </div>
           <% end %>
