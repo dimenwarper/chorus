@@ -34,7 +34,9 @@ defmodule Chorus.Orchestrator.Workspace do
   end
 
   def create_branch(repo_path, branch_name) do
-    # Create branch from main/master
+    # Pull latest from origin before branching
+    System.cmd("git", ["pull", "origin", "main"], cd: repo_path, stderr_to_stdout: true)
+
     case System.cmd("git", ["checkout", "-b", branch_name], cd: repo_path, stderr_to_stdout: true) do
       {_, 0} ->
         :ok
