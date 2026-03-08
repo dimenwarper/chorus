@@ -70,10 +70,8 @@ defmodule ChorusWeb.AdminLive do
 
   def handle_event("approve", %{"id" => idea_id}, socket) do
     board = socket.assigns.board
-    config = load_config()
-
     case Approval.approve(idea_id,
-           workspace_root: config.workspace_root,
+           workspace_root: workspace_root(),
            board_title: board.title) do
       {:ok, idea} ->
         Phoenix.PubSub.broadcast(Chorus.PubSub, "board:#{board.id}", :ideas_updated)
@@ -160,13 +158,10 @@ defmodule ChorusWeb.AdminLive do
 
         if repo_url && repo_url != "" do
           if valid_git_url?(repo_url) do
-            config = load_config()
-
             with {:ok, idea} <- Ideas.transition_status(idea.id, "approved"),
                  {:ok, _idea} <- Ideas.update_idea(idea.id, %{repo_url: repo_url}) do
-              workspace_root = config.workspace_root
               repo_name = repo_url |> String.trim_trailing("/") |> String.trim_trailing(".git") |> String.split("/") |> List.last()
-              repo_path = Path.join(workspace_root, repo_name)
+              repo_path = Path.join(workspace_root(), repo_name)
               clone_if_needed(repo_url, repo_path)
               Ideas.update_idea(idea.id, %{repo_path: repo_path})
             end
@@ -194,9 +189,9 @@ defmodule ChorusWeb.AdminLive do
           {:noreply, put_flash(socket, :error, "Invalid repo URL — must use HTTPS")}
 
         true ->
-          config = load_config()
+          workspace_root = workspace_root()
           repo_name = repo_url |> String.trim_trailing("/") |> String.trim_trailing(".git") |> String.split("/") |> List.last()
-          repo_path = Path.join(config.workspace_root, repo_name)
+          repo_path = Path.join(workspace_root, repo_name)
           clone_if_needed(repo_url, repo_path)
           %{repo_url: repo_url, repo_path: repo_path}
       end
@@ -226,9 +221,8 @@ defmodule ChorusWeb.AdminLive do
         {:noreply, put_flash(socket, :error, "Invalid repo URL — must use HTTPS")}
 
       true ->
-        config = load_config()
         repo_name = repo_url |> String.trim_trailing("/") |> String.trim_trailing(".git") |> String.split("/") |> List.last()
-        repo_path = Path.join(config.workspace_root, repo_name)
+        repo_path = Path.join(workspace_root(), repo_name)
         clone_if_needed(repo_url, repo_path)
 
         case Ideas.update_idea(idea_id, %{repo_url: repo_url, repo_path: repo_path}) do
@@ -258,13 +252,8 @@ defmodule ChorusWeb.AdminLive do
   # Helpers
   # ---------------------------------------------------------------------------
 
-  defp load_config do
-    try do
-      status = Chorus.Orchestrator.Server.status()
-      status.config
-    catch
-      :exit, _ -> %Chorus.Workflow.Config{}
-    end
+  defp workspace_root do
+    %Chorus.Workflow.Config{}.workspace_root
   end
 
   defp valid_git_url?(url) do
