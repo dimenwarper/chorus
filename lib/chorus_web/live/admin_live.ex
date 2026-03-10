@@ -19,7 +19,7 @@ defmodule ChorusWeb.AdminLive do
     board = Boards.get_default_board()
 
     if is_nil(board) do
-      {:ok, assign(socket, board: nil, tab: "board", columns: @columns, tasks_by_status: %{}, pending_ideas: [], all_ideas: [], actionable_ideas: [], orch_status: nil, adding_to_column: false, task_form: to_form(%{"title" => "", "description" => ""}))}
+      {:ok, assign(socket, board: nil, tab: "board", columns: @columns, tasks_by_status: %{}, pending_ideas: [], all_ideas: [], actionable_ideas: [], orch_status: nil, workflow_config: nil, prompt_template: nil, adding_to_column: false, task_form: to_form(%{"title" => "", "description" => ""}))}
     else
       if connected?(socket) do
         Phoenix.PubSub.subscribe(Chorus.PubSub, "board:#{board.id}")
@@ -59,13 +59,39 @@ defmodule ChorusWeb.AdminLive do
     assign(socket, orch_status: status)
   end
 
+  defp load_workflow_data(socket) do
+    {config, prompt_template} =
+      case Chorus.Workflow.Loader.load() do
+        {:ok, %{config: raw, prompt_template: tpl}} ->
+          {Chorus.Workflow.Config.from_workflow(%{config: raw}), tpl}
+        {:error, _} ->
+          {%Chorus.Workflow.Config{}, nil}
+      end
+
+    assign(socket, workflow_config: config, prompt_template: prompt_template)
+  end
+
   # ---------------------------------------------------------------------------
   # Events
   # ---------------------------------------------------------------------------
 
   @impl true
+  def handle_event("switch_tab", %{"tab" => "config"}, socket) do
+    {:noreply, socket |> assign(tab: "config") |> load_workflow_data()}
+  end
+
   def handle_event("switch_tab", %{"tab" => tab}, socket) do
     {:noreply, assign(socket, tab: tab)}
+  end
+
+  def handle_event("reload_workflow", _params, socket) do
+    case Chorus.Orchestrator.Server.reload_workflow() do
+      :ok ->
+        {:noreply, socket |> load_workflow_data() |> put_flash(:info, "Workflow reloaded")}
+
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, "Reload failed: #{reason}")}
+    end
   end
 
   def handle_event("approve", %{"id" => idea_id}, socket) do
@@ -361,6 +387,9 @@ defmodule ChorusWeb.AdminLive do
             <a role="tab" class={"tab #{if @tab == "settings", do: "tab-active"}"} phx-click="switch_tab" phx-value-tab="settings">
               Settings
             </a>
+            <a role="tab" class={"tab #{if @tab == "config", do: "tab-active"}"} phx-click="switch_tab" phx-value-tab="config">
+              Config
+            </a>
           </div>
 
           <%!-- KANBAN BOARD --%>
@@ -587,6 +616,107 @@ defmodule ChorusWeb.AdminLive do
                   <button type="submit" class="btn btn-primary btn-sm">Save</button>
                 </.form>
               </div>
+            </div>
+          <% end %>
+
+          <%!-- CONFIG TAB --%>
+          <%= if @tab == "config" do %>
+            <div class="space-y-4 max-w-3xl">
+              <div class="flex items-center justify-between">
+                <p class="text-sm text-base-content/50">Live values parsed from <code class="font-mono bg-base-200 px-1 rounded">WORKFLOW.md</code></p>
+                <button phx-click="reload_workflow" class="btn btn-sm btn-outline">Reload</button>
+              </div>
+
+              <%= if @workflow_config do %>
+                <%!-- Board section --%>
+                <div class="card bg-base-100 shadow-sm">
+                  <div class="card-body py-4 px-5">
+                    <h3 class="font-semibold text-sm mb-3 text-base-content/70 uppercase tracking-wide">Board</h3>
+                    <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                      <div class="text-base-content/50">Title</div>
+                      <div class="font-mono">{@workflow_config.board_title || "—"}</div>
+                      <div class="text-base-content/50">Description</div>
+                      <div class="font-mono">{@workflow_config.board_description || "—"}</div>
+                      <div class="text-base-content/50">Dispatch mode</div>
+                      <div><span class="badge badge-sm badge-outline">{@workflow_config.dispatch_priority_mode}</span></div>
+                      <div class="text-base-content/50">Priority weight</div>
+                      <div class="font-mono">{@workflow_config.priority_weight}</div>
+                      <div class="text-base-content/50">Upvote weight</div>
+                      <div class="font-mono">{@workflow_config.upvote_weight}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <%!-- Polling section --%>
+                <div class="card bg-base-100 shadow-sm">
+                  <div class="card-body py-4 px-5">
+                    <h3 class="font-semibold text-sm mb-3 text-base-content/70 uppercase tracking-wide">Polling</h3>
+                    <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                      <div class="text-base-content/50">Interval</div>
+                      <div class="font-mono">{@workflow_config.poll_interval_ms} ms ({@workflow_config.poll_interval_ms / 1000}s)</div>
+                    </div>
+                  </div>
+                </div>
+
+                <%!-- Workspace section --%>
+                <div class="card bg-base-100 shadow-sm">
+                  <div class="card-body py-4 px-5">
+                    <h3 class="font-semibold text-sm mb-3 text-base-content/70 uppercase tracking-wide">Workspace</h3>
+                    <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                      <div class="text-base-content/50">Root</div>
+                      <div class="font-mono">{@workflow_config.workspace_root}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <%!-- Agent section --%>
+                <div class="card bg-base-100 shadow-sm">
+                  <div class="card-body py-4 px-5">
+                    <h3 class="font-semibold text-sm mb-3 text-base-content/70 uppercase tracking-wide">Agent</h3>
+                    <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                      <div class="text-base-content/50">Command</div>
+                      <div class="font-mono">{@workflow_config.agent_command || "—"}</div>
+                      <div class="text-base-content/50">Max concurrent</div>
+                      <div class="font-mono">{@workflow_config.max_concurrent_agents}</div>
+                      <div class="text-base-content/50">Max retries</div>
+                      <div class="font-mono">{@workflow_config.max_retries}</div>
+                      <div class="text-base-content/50">Stall timeout</div>
+                      <div class="font-mono">{@workflow_config.stall_timeout_ms} ms ({div(@workflow_config.stall_timeout_ms, 1000)}s)</div>
+                    </div>
+                  </div>
+                </div>
+
+                <%!-- Hooks section --%>
+                <%= if map_size(@workflow_config.hooks) > 0 do %>
+                  <div class="card bg-base-100 shadow-sm">
+                    <div class="card-body py-4 px-5">
+                      <h3 class="font-semibold text-sm mb-3 text-base-content/70 uppercase tracking-wide">Hooks</h3>
+                      <div class="space-y-2">
+                        <%= for {hook_name, hook_cmd} <- @workflow_config.hooks do %>
+                          <div class="grid grid-cols-2 gap-x-6 text-sm">
+                            <div class="text-base-content/50">{hook_name}</div>
+                            <div class="font-mono text-xs bg-base-200 px-2 py-1 rounded">{hook_cmd}</div>
+                          </div>
+                        <% end %>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+
+                <%!-- Prompt template section --%>
+                <%= if @prompt_template do %>
+                  <div class="card bg-base-100 shadow-sm">
+                    <div class="card-body py-4 px-5">
+                      <h3 class="font-semibold text-sm mb-3 text-base-content/70 uppercase tracking-wide">Prompt Template</h3>
+                      <pre class="text-xs font-mono bg-base-200 p-3 rounded overflow-x-auto whitespace-pre-wrap leading-relaxed">{@prompt_template}</pre>
+                    </div>
+                  </div>
+                <% end %>
+              <% else %>
+                <div class="text-center py-12 text-base-content/40">
+                  <p>Could not load WORKFLOW.md</p>
+                </div>
+              <% end %>
             </div>
           <% end %>
         <% else %>
